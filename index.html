@@ -677,8 +677,10 @@
       <div class="m-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="4"/><path d="m22 7-10 6L2 7"/></svg></div>
       <h3>Ранний доступ</h3>
       <p>Оставь почту — пришлём приглашение.</p>
-      <input type="email" placeholder="you@example.com" id="email">
-      <button class="btn btn-gold" onclick="submitEmail()"><span>Записаться</span></button>
+      <input type="email" name="email" placeholder="you@example.com" id="email" autocomplete="email" inputmode="email" onkeydown="if(event.key==='Enter'){event.preventDefault();submitEmail();}">
+      <input type="text" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Leave this empty" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0">
+      <div id="emailErr" role="alert" style="display:none;color:#e8a48a;font-size:13.5px;margin:-4px 0 12px">Введите корректный e-mail</div>
+      <button class="btn btn-gold" id="submitBtn" onclick="submitEmail()"><span>Записаться</span></button>
     </div>
     <div class="ok">
       <div class="m-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
@@ -696,6 +698,9 @@
   function openModal() {
     window._modalReturn = document.activeElement;
     modalBox.classList.remove('done');
+    var sb = document.getElementById('submitBtn');
+    if (sb) { sb.disabled = false; sb.style.opacity = ''; sb.style.pointerEvents = ''; }
+    var er = document.getElementById('emailErr'); if (er) er.style.display = 'none';
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
     setTimeout(function(){ var el = document.getElementById('email'); if (el) el.focus(); }, 60);
@@ -705,9 +710,55 @@
     document.body.style.overflow = '';
     if (window._modalReturn && window._modalReturn.focus) window._modalReturn.focus({ preventScroll: true });
   }
-  function submitEmail() {
+  // ── Early-access email capture → FormSubmit (no backend) ──────────
+  // Every signup is emailed to this address. Change it to reroute leads.
+  var LEADS_EMAIL = "camafobia@gmail.com";
+
+  function showDone() {
     modalBox.classList.add('done');
     setTimeout(function(){ var b = modalBox.querySelector('.ok .btn-gold'); if (b) b.focus(); }, 40);
+  }
+
+  function submitEmail() {
+    var input = document.getElementById('email');
+    var btn = document.getElementById('submitBtn');
+    var err = document.getElementById('emailErr');
+    var hp = document.getElementById('hp');
+    var email = (input.value || '').trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (err) err.style.display = 'block';
+      input.focus();
+      return;
+    }
+    if (err) err.style.display = 'none';
+    if (hp && hp.value) { showDone(); return; } // silent bot trap
+
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.65'; btn.style.pointerEvents = 'none'; }
+
+    // Cross-origin POST via a hidden form targeting a hidden iframe — no CORS,
+    // the browser always sends it, so a lead is never dropped on a flaky fetch.
+    var sink = document.getElementById('fs_sink');
+    if (!sink) {
+      sink = document.createElement('iframe');
+      sink.name = 'fs_sink'; sink.id = 'fs_sink'; sink.style.display = 'none';
+      document.body.appendChild(sink);
+    }
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = 'https://formsubmit.co/' + LEADS_EMAIL;
+    f.target = 'fs_sink';
+    f.style.display = 'none';
+    function field(n, v) { var i = document.createElement('input'); i.type = 'hidden'; i.name = n; i.value = v; f.appendChild(i); }
+    field('email', email);
+    field('_subject', 'hiya — новая заявка на ранний доступ');
+    field('_template', 'table');
+    field('_captcha', 'false');
+    document.body.appendChild(f);
+    f.submit();
+    setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 4000);
+
+    showDone();
   }
   modal.addEventListener('keydown', function(e){
     if (e.key !== 'Tab') return;

@@ -156,47 +156,138 @@
   .hero-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .hero-actions .btn-gold { font-size: 16px; padding: 17px 36px; }
 
-  /* ── Realistic iPhone ─────────────────── */
+  /* ── Realistic 3D iPhone (closed 5-face titanium box) ────────── */
   .stage { position: relative; z-index: 2; display: flex; justify-content: center; max-width: 100%; }
-  .stage::after {
-    content: ""; position: absolute; z-index: -1; bottom: -6%; left: 50%; transform: translateX(-50%);
-    width: 76%; height: 54px; border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(0,0,0,0.6), transparent 74%); filter: blur(28px);
+  .ip3d-scene {
+    --ip3d-w: 322px;
+    --ip3d-h: 660px;   /* ≈ 2.05 : 1  (19.5:9 incl. bezel) */
+    --ip3d-depth: 22px;
+    --ip3d-half: 11px;
+    --ip3d-bezel: 4px;
+    --ip3d-rout: 60px;
+    --ip3d-rin: 52px;
+    position: relative; width: var(--ip3d-w); height: var(--ip3d-h); margin: 0 auto;
+    perspective: 1700px; perspective-origin: 50% 42%;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
-  .stage::before {
-    content: ""; position: absolute; z-index: -1; top: 8%; left: 50%; transform: translateX(-50%);
-    width: 78%; height: 66%; background: radial-gradient(closest-side, rgba(231,198,145,0.2), transparent 72%); filter: blur(56px);
+  /* warm cafe bokeh behind the phone */
+  .ip3d-bokeh {
+    position: absolute; z-index: 0; inset: -14% -30% -8% -12%; pointer-events: none;
+    background:
+      radial-gradient(38px 38px at 80% 24%, rgba(244,226,188,0.44), transparent 62%),
+      radial-gradient(66px 66px at 93% 55%, rgba(217,177,106,0.30), transparent 66%),
+      radial-gradient(30px 30px at 74% 80%, rgba(231,198,145,0.34), transparent 60%),
+      radial-gradient(20px 20px at 60% 12%, rgba(244,226,188,0.30), transparent 60%),
+      radial-gradient(closest-side, rgba(231,198,145,0.15), transparent 74%);
+    filter: blur(10px);
   }
-  .phone {
-    position: relative; width: 336px; border-radius: 62px; padding: 5px; background: var(--metal);
-    box-shadow:
-      0 46px 92px rgba(0,0,0,0.62), 0 18px 40px rgba(0,0,0,0.5),
-      inset 0 0 0 1px rgba(0,0,0,0.32), inset 0 2px 3px rgba(255,255,255,0.55), inset 0 -3px 6px rgba(0,0,0,0.45);
+  .ip3d-shadow {
+    position: absolute; z-index: 1; left: 49%; bottom: 1%; width: 78%; height: 70px;
+    transform: translateX(-50%) skewX(-12deg);
+    background: radial-gradient(closest-side, rgba(0,0,0,0.74), rgba(0,0,0,0.34) 52%, transparent 78%);
+    filter: blur(34px); pointer-events: none;
+  }
+  .ip3d-reflect {
+    position: absolute; z-index: 0; left: 48%; bottom: -3%; width: 58%; height: 150px;
+    transform: translateX(-50%) scaleY(-1) skewX(-15deg);
+    background: linear-gradient(to bottom, rgba(150,140,124,0.16), rgba(30,28,26,0.05) 42%, transparent 72%);
+    -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%);
+    filter: blur(3px); opacity: 0.5; pointer-events: none;
+  }
+  .ip3d-stage3d {
+    position: absolute; inset: 0; z-index: 2;
+    transform-style: preserve-3d;
+    transform: rotateX(4deg) rotateY(-16deg) rotateZ(1deg);
     will-change: transform;
+    animation: ip3d-float 6.5s ease-in-out infinite;
   }
-  .phone::before { /* glass sheen */
-    content: ""; position: absolute; inset: 5px; border-radius: 57px; pointer-events: none; z-index: 8;
-    background: linear-gradient(122deg, rgba(255,255,255,0.14) 0%, transparent 20%, transparent 82%, rgba(255,255,255,0.06) 100%);
+  .ip3d-stage3d > * { position: absolute; }
+
+  /* front (screen + bezel) & back titanium planes */
+  .ip3d-front, .ip3d-back { inset: 0; border-radius: var(--ip3d-rout); backface-visibility: hidden; }
+  .ip3d-front {
+    transform: translateZ(var(--ip3d-half)); padding: var(--ip3d-bezel);
+    background: linear-gradient(125deg, #b8b3ab 0%, #6d6a63 14%, #322f2b 34%, #1c1a17 50%, #4a463f 66%, #2a2723 82%, #8a857c 100%);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.6);
   }
-  .side { position: absolute; background: var(--metal); box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -1px 1px rgba(0,0,0,0.4), -1px 0 2px rgba(0,0,0,0.4); }
-  .s-action { left: -2px; top: 20%; width: 3px; height: 30px; border-radius: 3px 0 0 3px; }
-  .s-up { left: -3px; top: 30%; width: 4px; height: 52px; border-radius: 3px 0 0 3px; }
-  .s-dn { left: -3px; top: 44%; width: 4px; height: 52px; border-radius: 3px 0 0 3px; }
-  .s-power { right: -3px; top: 32%; width: 4px; height: 74px; border-radius: 0 3px 3px 0; box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -1px 1px rgba(0,0,0,0.4), 1px 0 2px rgba(0,0,0,0.4); }
-  .screen {
-    position: relative; border-radius: 57px; overflow: hidden;
+  .ip3d-back {
+    transform: translateZ(calc(-1 * var(--ip3d-half)));
+    background: linear-gradient(120deg, #2b2824 0%, #3d3a34 30%, #22201c 55%, #37342e 78%, #1c1a16 100%);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6);
+  }
+
+  /* extruded titanium rails — real rotated faces closing the box */
+  .ip3d-rail { backface-visibility: hidden; }
+  .ip3d-rail-left, .ip3d-rail-right { top: 56px; height: calc(var(--ip3d-h) - 112px); width: var(--ip3d-depth); }
+  .ip3d-rail-left {
+    left: 0; transform-origin: left center; transform: rotateY(-90deg) translateX(calc(-1 * var(--ip3d-half)));
+    background: linear-gradient(to right, #14120f 0%, #3a3630 18%, #6b665c 40%, #8f897d 52%, #4b463e 70%, #201d19 100%);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.22), inset 0 -1px 2px rgba(0,0,0,0.7);
+  }
+  .ip3d-rail-right {
+    right: 0; transform-origin: right center; transform: rotateY(90deg) translateX(var(--ip3d-half));
+    background: linear-gradient(to left, #201d18 0%, #57524a 22%, #b4ad9f 44%, #e8e0d0 52%, #9a9385 64%, #46423a 84%, #191713 100%);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.30), inset 0 -1px 2px rgba(0,0,0,0.6);
+  }
+  .ip3d-rail-right::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 42%, rgba(255,255,255,0.85) 50%, transparent 58%);
+    mix-blend-mode: screen; opacity: 0.55;
+  }
+  .ip3d-rail-top, .ip3d-rail-bottom { left: 56px; width: calc(var(--ip3d-w) - 112px); height: var(--ip3d-depth); }
+  .ip3d-rail-top {
+    top: 0; transform-origin: center top; transform: rotateX(90deg) translateY(calc(-1 * var(--ip3d-half)));
+    background: linear-gradient(to bottom, #d9d2c4 0%, #a39d90 34%, #5d584f 64%, #b2ab9d 100%);
+  }
+  .ip3d-rail-bottom {
+    bottom: 0; transform-origin: center bottom; transform: rotateX(-90deg) translateY(var(--ip3d-half));
+    background: linear-gradient(to top, #0e0c0a 0%, #35322c 60%, #4a463e 100%);
+  }
+  /* antenna hairlines on the top rail */
+  .ip3d-rail-top::before, .ip3d-rail-top::after { content: ""; position: absolute; top: 0; width: 8px; height: 100%; background: rgba(0,0,0,0.32); }
+  .ip3d-rail-top::before { left: 18%; } .ip3d-rail-top::after { right: 18%; }
+
+  /* side buttons sitting proud of the rails */
+  .ip3d-btn {
+    position: absolute; left: 50%; transform: translateX(-50%) translateZ(1px); width: 14px; border-radius: 2px;
+    background: linear-gradient(to right, #1a1815, #6b665c 45%, #8f897d 58%, #231f1b);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), inset 0 -1px 1px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.5);
+  }
+  .ip3d-btn-power  { top: 30%; height: 66px; }   /* right rail (visible) */
+  .ip3d-btn-action { top: 13%; height: 24px; }   /* left rail */
+  .ip3d-btn-vup    { top: 25%; height: 44px; }
+  .ip3d-btn-vdn    { top: 37%; height: 44px; }
+
+  /* the glass screen */
+  .ip3d-screen {
+    position: relative; width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    border-radius: var(--ip3d-rin); overflow: hidden; padding: 14px 16px 18px;
     background: radial-gradient(120% 80% at 50% -8%, #201a11 0%, #100c08 55%, #0b0805 100%);
-    padding: 15px 18px 20px;
-    box-shadow: inset 0 0 0 2px #050403;
+    box-shadow: inset 0 0 0 1.5px #050403;
   }
-  .screen::after { content: ""; position: absolute; inset: 0; z-index: 6; pointer-events: none; border-radius: inherit; background: linear-gradient(118deg, rgba(255,255,255,0.05) 0%, transparent 26%); }
-  .island {
-    position: absolute; top: 13px; left: 50%; transform: translateX(-50%); z-index: 7;
-    width: 98px; height: 30px; background: #000; border-radius: 100px;
-    display: flex; align-items: center; justify-content: flex-end; padding-right: 11px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  .ip3d-screen .near-card { margin-top: auto; }
+  .ip3d-glass {
+    position: absolute; inset: 0; z-index: 30; pointer-events: none; border-radius: var(--ip3d-rin);
+    background:
+      linear-gradient(122deg, rgba(255,255,255,0.13) 0%, transparent 22%, transparent 82%, rgba(255,255,255,0.05) 100%),
+      radial-gradient(130% 60% at 12% 6%, rgba(255,255,255,0.10), transparent 42%);
+    mix-blend-mode: screen;
   }
-  .island::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 38% 35%, #33456b 0%, #0a0e18 62%); box-shadow: inset 0 0 2px rgba(120,150,220,0.5); }
+  .ip3d-island {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20;
+    width: 96px; height: 28px; background: #000; border-radius: 100px; box-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .ip3d-island::after {
+    content: ""; position: absolute; top: 50%; right: 11px; transform: translateY(-50%);
+    width: 8px; height: 8px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 35%, #33456b 0%, #0a0e18 62%); box-shadow: inset 0 0 2px rgba(120,150,220,0.5);
+  }
+  @keyframes ip3d-float {
+    0%, 100% { transform: rotateX(4deg) rotateY(-16deg) rotateZ(1deg) translateY(0); }
+    50%      { transform: rotateX(3deg) rotateY(-15deg) rotateZ(1deg) translateY(-10px); }
+  }
   .statusbar {
     position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between;
     height: 30px; font-size: 13px; font-weight: 600; color: var(--ink); padding: 0 6px; margin-bottom: 14px;
@@ -331,8 +422,9 @@
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .reveal { opacity: 1; transform: none; transition: none; }
-    .btn, .like, .step, .b-card, .app-cta, .modal, .overlay, .phone, .grain { transition: none !important; }
+    .btn, .like, .step, .b-card, .app-cta, .modal, .overlay, .grain { transition: none !important; }
     .btn-gold:hover, .btn-ghost:active, .step:hover, .b-card:hover, .like:hover { transform: none; }
+    .ip3d-stage3d { animation: none !important; }
     [data-speed] { transform: none !important; }
   }
 
@@ -342,7 +434,7 @@
     .hero { grid-template-columns: 1fr; padding-top: 104px; padding-bottom: 56px; gap: 44px; }
     .ambient { inset: -40px 0; }
     .bento { max-width: none; }
-    .phone { width: 300px; }
+    .ip3d-scene { --ip3d-w: 300px; --ip3d-h: 615px; }
     section { padding: 64px 0; }
     .head { margin-bottom: 36px; }
     .steps { grid-template-columns: 1fr; gap: 14px; }
@@ -356,6 +448,8 @@
   /* ── Responsive: phones ──────────────── */
   @media (max-width: 560px) {
     .pill-city { display: none; }
+    .ip3d-scene { --ip3d-w: 290px; --ip3d-h: 594px; --ip3d-depth: 16px; --ip3d-half: 8px; perspective: 2200px; }
+    .ip3d-stage3d { transform: rotateX(2deg) rotateY(-10deg) rotateZ(0.5deg); animation: none; }
     .hero { padding-top: 100px; padding-bottom: 48px; gap: 34px; }
     h1 { font-size: clamp(34px, 8.6vw, 46px); line-height: 1.06; }
     .lede { font-size: 18px; margin-bottom: 24px; }
@@ -378,7 +472,7 @@
 
   @media (max-width: 360px) {
     .wrap { padding: 0 16px; }
-    .phone { width: min(284px, 100%); }
+    .ip3d-scene { --ip3d-w: min(266px, 84vw); --ip3d-h: calc(min(266px, 84vw) * 2.05); }
     .people { gap: 6px; }
   }
 </style>
@@ -440,14 +534,26 @@
   </div>
 
   <div class="stage">
-    <div class="phone" data-speed="0.07">
-      <span class="side s-action"></span>
-      <span class="side s-up"></span>
-      <span class="side s-dn"></span>
-      <span class="side s-power"></span>
-      <div class="screen">
-        <div class="island"></div>
-        <div class="statusbar">
+    <div class="ip3d-scene" data-speed="0.05">
+      <div class="ip3d-bokeh" aria-hidden="true"></div>
+      <div class="ip3d-reflect" aria-hidden="true"></div>
+      <div class="ip3d-shadow" aria-hidden="true"></div>
+      <div class="ip3d-stage3d">
+        <div class="ip3d-back" aria-hidden="true"></div>
+        <div class="ip3d-rail ip3d-rail-left" aria-hidden="true">
+          <span class="ip3d-btn ip3d-btn-action"></span>
+          <span class="ip3d-btn ip3d-btn-vup"></span>
+          <span class="ip3d-btn ip3d-btn-vdn"></span>
+        </div>
+        <div class="ip3d-rail ip3d-rail-right" aria-hidden="true">
+          <span class="ip3d-btn ip3d-btn-power"></span>
+        </div>
+        <div class="ip3d-rail ip3d-rail-top" aria-hidden="true"></div>
+        <div class="ip3d-rail ip3d-rail-bottom" aria-hidden="true"></div>
+        <div class="ip3d-front">
+          <div class="ip3d-screen">
+            <div class="ip3d-island" aria-hidden="true"></div>
+            <div class="statusbar">
           <span>9:41</span>
           <span class="sig">
             <svg width="17" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="7.5" width="3" height="4.5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
@@ -512,7 +618,10 @@
           </div>
         </div>
 
-        <button class="app-cta">Посмотреть</button>
+            <button class="app-cta">Посмотреть</button>
+            <div class="ip3d-glass" aria-hidden="true"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

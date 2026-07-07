@@ -711,8 +711,9 @@
     if (window._modalReturn && window._modalReturn.focus) window._modalReturn.focus({ preventScroll: true });
   }
   // ── Early-access email capture → FormSubmit (no backend) ──────────
-  // Every signup is emailed to this address. Change it to reroute leads.
-  var LEADS_EMAIL = "camafobia@gmail.com";
+  // FormSubmit form token (hides the real destination email from the page
+  // source). Replace via your FormSubmit dashboard to reroute leads.
+  var FORM_ENDPOINT = "57fc569050d5253250fac2b952c1cf19";
 
   function showDone() {
     modalBox.classList.add('done');
@@ -746,7 +747,7 @@
     }
     var f = document.createElement('form');
     f.method = 'POST';
-    f.action = 'https://formsubmit.co/' + LEADS_EMAIL;
+    f.action = 'https://formsubmit.co/' + FORM_ENDPOINT;
     f.target = 'fs_sink';
     f.style.display = 'none';
     function field(n, v) { var i = document.createElement('input'); i.type = 'hidden'; i.name = n; i.value = v; f.appendChild(i); }

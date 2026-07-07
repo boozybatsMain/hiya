@@ -8,6 +8,27 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+<!-- ── Аналитика: Google Analytics 4 ────────────────────────────────
+     Вставь свой Measurement ID (вида G-XXXXXXXXXX) из GA4 в GA_ID ниже.
+     Пока стоит заглушка — аналитика спит и ничего лишнего не грузит.   -->
+<script>
+  window.GA_ID = "G-XXXXXXXXXX"; /* ← сюда свой ID из Google Analytics 4 */
+  (function () {
+    var id = window.GA_ID;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function () { dataLayer.push(arguments); };
+    var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX';
+    if (live) {
+      var s = document.createElement('script');
+      s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
+      document.head.appendChild(s);
+      gtag('js', new Date());
+      gtag('config', id);
+    }
+    /* Безопасный трекер событий: молчит, пока не вставлен реальный ID. */
+    window.track = function (name, params) { if (live) gtag('event', name, params || {}); };
+  })();
+</script>
 <style>
   :root {
     --bg: #0a0806;
@@ -488,7 +509,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
         Алматы
       </span>
-      <button class="btn btn-gold" onclick="openModal()"><span>Получить доступ</span></button>
+      <button class="btn btn-gold" onclick="openModal('nav')"><span>Получить доступ</span></button>
     </div>
   </div>
 </nav>
@@ -528,8 +549,8 @@
     </div>
 
     <div class="hero-actions">
-      <button class="btn btn-gold" onclick="openModal()"><span>Получить доступ</span></button>
-      <button class="btn btn-ghost" onclick="document.getElementById('how').scrollIntoView({block:'start'})">Как это работает</button>
+      <button class="btn btn-gold" onclick="openModal('hero')"><span>Получить доступ</span></button>
+      <button class="btn btn-ghost" onclick="if(window.track)track('view_how_it_works');document.getElementById('how').scrollIntoView({block:'start'})">Как это работает</button>
     </div>
   </div>
 
@@ -658,7 +679,7 @@
   <div class="cta-box reveal">
     <h2>Попробовать первым</h2>
     <p>Скоро в Алматы.</p>
-    <button class="btn btn-gold" onclick="openModal()"><span>Получить доступ</span></button>
+    <button class="btn btn-gold" onclick="openModal('cta_bottom')"><span>Получить доступ</span></button>
   </div>
 </section>
 
@@ -695,7 +716,8 @@
   var modal = document.getElementById('modal');
   var modalBox = document.getElementById('modalBox');
 
-  function openModal() {
+  function openModal(source) {
+    if (window.track) track('open_signup', { source: source || 'unknown' });
     window._modalReturn = document.activeElement;
     modalBox.classList.remove('done');
     var sb = document.getElementById('submitBtn');
@@ -759,6 +781,7 @@
     f.submit();
     setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 4000);
 
+    if (window.track) track('generate_lead', { method: 'early_access' });
     showDone();
   }
   modal.addEventListener('keydown', function(e){

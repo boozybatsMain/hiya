@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hiya — не гадай, можно ли подойти</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+<style>
+  :root {
+    --bg: #0a0806;
+    --bg-2: #100d09;
+    --surface: #16120c;
+    --surface-2: #1d1810;
+    --gold: #e7c691;
+    --gold-lo: #d9b16a;
+    --gold-hi: #f4e2bc;
+    --ink: #f6f1e8;
+    --ink-2: #b3aa9a;
+    --ink-3: #978d7b;
+    --line: rgba(231, 198, 145, 0.16);
+    --line-2: rgba(231, 198, 145, 0.28);
+    --r-xl: 34px;
+    --r-lg: 24px;
+    --r-md: 18px;
+    --gold-grad: linear-gradient(135deg, #f7ead0 0%, #ecd6a6 38%, #e2be7f 64%, #d9b16a 100%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: radial-gradient(120% 70% at 50% 0%, #120d08 0%, #0a0806 46%) fixed, var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  :focus-visible { outline: none; }
+
+  /* film grain — fail-safe: never opaque, sits below nav & modal */
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  @supports (mix-blend-mode: overlay) {
+    .grain { mix-blend-mode: overlay; opacity: 0.05; }
+  }
+
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+
+  /* ── Nav ─────────────────────────────── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    backdrop-filter: saturate(150%) blur(22px);
+    -webkit-backdrop-filter: saturate(150%) blur(22px);
+    background: rgba(10, 8, 6, 0.66);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 68px;
+  }
+  .brand {
+    font-size: 24px; font-weight: 800; letter-spacing: -0.03em;
+    background: var(--gold-grad);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .nav-right { display: flex; align-items: center; gap: 14px; }
+  .pill-city {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    background: rgba(231, 198, 145, 0.06);
+    border: 1px solid var(--line);
+    padding: 9px 18px; border-radius: 100px;
+  }
+  .pill-city svg { color: var(--gold); }
+
+  .btn {
+    font-family: inherit; cursor: pointer; border: none; position: relative; white-space: nowrap;
+    transition: transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .25s ease, background .25s ease, border-color .25s ease, opacity .25s ease;
+  }
+  .btn-gold {
+    font-size: 15px; font-weight: 700; color: #221805;
+    background: var(--gold-grad);
+    padding: 12px 26px; border-radius: 100px; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(207, 160, 85, 0.22), inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+  .btn-gold::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(105deg, transparent 32%, rgba(255,255,255,0.5) 47%, transparent 58%);
+    opacity: 0.5;
+  }
+  .btn-gold > * { position: relative; z-index: 1; }
+  .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(207, 160, 85, 0.34), inset 0 1px 0 rgba(255,255,255,0.5); }
+  .btn-gold:active { transform: translateY(0); }
+  .btn-ghost {
+    font-size: 16px; font-weight: 600; color: var(--ink);
+    background: rgba(231, 198, 145, 0.05);
+    border: 1px solid var(--line-2);
+    padding: 16px 30px; border-radius: 100px;
+  }
+  .btn-ghost:hover { background: rgba(231, 198, 145, 0.12); border-color: var(--gold); }
+  .btn-ghost:active { background: rgba(231, 198, 145, 0.16); transform: translateY(1px); }
+
+  .btn:focus-visible, .app-cta:focus-visible, .like:focus-visible, .modal .x:focus-visible {
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold);
+  }
+  .btn-gold:focus-visible {
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold), 0 8px 24px rgba(207,160,85,0.22);
+  }
+
+  /* ── Hero ─────────────────────────────── */
+  .hero {
+    position: relative;
+    padding-top: 144px;
+    padding-bottom: 112px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: center;
+    gap: 64px;
+  }
+  .ambient { position: absolute; inset: -80px -200px -80px 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .ambient .glow { position: absolute; border-radius: 50%; filter: blur(60px); }
+  .g1 { top: 4%; right: 6%; width: 460px; height: 460px; background: radial-gradient(closest-side, rgba(231,198,145,0.16), transparent 70%); }
+  .g2 { bottom: 2%; right: 30%; width: 360px; height: 360px; background: radial-gradient(closest-side, rgba(211,168,98,0.12), transparent 70%); }
+  .bokeh { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .bokeh span {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(244,226,188,0.55), rgba(231,198,145,0.12) 60%, transparent 72%);
+    filter: blur(1px);
+  }
+  .b1 { width: 26px; height: 26px; top: 30%; right: 8%; opacity: .5; }
+  .b2 { width: 14px; height: 14px; top: 62%; right: 40%; opacity: .45; filter: blur(2px); }
+  .b3 { width: 40px; height: 40px; top: 72%; right: 4%; opacity: .3; filter: blur(3px); }
+  .b4 { width: 10px; height: 10px; top: 20%; right: 34%; opacity: .5; }
+  .b5 { width: 20px; height: 20px; top: 84%; right: 26%; opacity: .35; filter: blur(2px); }
+  .b6 { width: 8px; height: 8px; top: 46%; right: 2%; opacity: .55; }
+
+  .hero-copy { position: relative; z-index: 2; }
+  h1 {
+    font-size: clamp(44px, 5.6vw, 72px);
+    font-weight: 800; letter-spacing: -0.03em; line-height: 1.04;
+    margin-bottom: 24px;
+  }
+  h1 .em {
+    background: linear-gradient(180deg, #f6e6c4 0%, #e9cd9a 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25));
+  }
+  .lede { font-size: 20px; color: var(--ink-2); max-width: 420px; margin-bottom: 40px; line-height: 1.45; }
+  .feats { display: flex; flex-direction: column; margin-bottom: 40px; max-width: 440px; }
+  .feat { display: flex; align-items: center; gap: 16px; padding: 16px 0; }
+  .feat + .feat { border-top: 1px solid rgba(231, 198, 145, 0.22); }
+  .feat .ic {
+    flex: none; width: 44px; height: 44px;
+    display: grid; place-items: center;
+    color: var(--gold);
+    background: linear-gradient(160deg, rgba(231,198,145,0.14), rgba(231,198,145,0.03));
+    border: 1px solid rgba(231,198,145,0.24);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgba(244,226,188,0.18), 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .feat p { font-size: 16px; font-weight: 500; color: var(--ink); line-height: 1.3; min-width: 0; }
+  .hero-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .hero-actions .btn-gold { font-size: 16px; padding: 17px 36px; }
+
+  /* ── Phone ─────────────────────────────── */
+  .stage { position: relative; z-index: 2; display: flex; justify-content: center; perspective: 1700px; max-width: 100%; }
+  .stage::before {
+    content: ""; position: absolute; z-index: -1;
+    top: 10%; left: 50%; transform: translateX(-50%);
+    width: 72%; height: 62%;
+    background: radial-gradient(closest-side, rgba(231,198,145,0.18), transparent 72%);
+    filter: blur(52px);
+  }
+  .stage::after {
+    content: ""; position: absolute; z-index: -1;
+    bottom: -1%; left: 46%; transform: translateX(-50%) rotate(-2deg);
+    width: 74%; height: 46px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0,0,0,0.62), transparent 74%);
+    filter: blur(26px);
+  }
+  .phone {
+    position: relative;
+    width: 336px;
+    border-radius: 54px;
+    padding: 12px;
+    background:
+      linear-gradient(145deg, rgba(255,240,215,0.35) 0%, transparent 8%),
+      linear-gradient(160deg, #2b2620 0%, #17140f 46%, #26211a 100%);
+    box-shadow:
+      0 0 0 1px rgba(255,240,215,0.32),
+      0 0 0 2.5px rgba(120,105,80,0.55),
+      -26px 40px 90px rgba(0,0,0,0.68),
+      -10px 16px 34px rgba(0,0,0,0.55),
+      inset 2px 2px 4px rgba(255,240,215,0.16),
+      inset -2px -3px 6px rgba(0,0,0,0.7);
+    transform: rotateY(-14deg) rotateZ(1.6deg);
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    will-change: transform;
+    transition: transform .7s cubic-bezier(.2,.7,.2,1);
+  }
+  .phone:hover { transform: rotateY(-4deg) rotateZ(0.4deg); }
+  .phone::before {
+    content: ""; position: absolute; inset: 0; border-radius: 54px; pointer-events: none;
+    background: linear-gradient(125deg, rgba(255,255,255,0.22) 0%, transparent 18%, transparent 78%, rgba(255,255,255,0.08) 100%);
+    z-index: 4;
+  }
+  .screen {
+    position: relative;
+    background: radial-gradient(120% 80% at 50% -10%, #211b12 0%, #100c08 55%, #0b0805 100%);
+    border-radius: 43px;
+    padding: 16px 20px 22px;
+    overflow: hidden;
+  }
+  .screen::after {
+    content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(118deg, rgba(255,255,255,0.06) 0%, transparent 30%);
+  }
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    padding: 2px 6px 0; margin-bottom: 16px;
+  }
+  .notch { width: 92px; height: 26px; background: #000; border-radius: 100px; }
+  .sig { display: flex; gap: 6px; align-items: center; color: var(--ink); }
+  .app-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .app-brand { font-size: 20px; font-weight: 900; letter-spacing: -0.03em; color: var(--gold-hi); }
+  .app-loc { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .app-loc svg { color: var(--gold); }
+  .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.025em; }
+  .app-place { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--ink-2); margin: 8px 0 24px; }
+  .app-place svg { color: var(--gold); }
+
+  .people { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 24px; }
+  .person { position: relative; }
+  .photo {
+    position: relative;
+    aspect-ratio: 3 / 4.5;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(231,198,145,0.22);
+  }
+  .photo::before { /* champagne rim light */
+    content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: linear-gradient(115deg, transparent 50%, rgba(244,226,188,0.16) 100%);
+  }
+  .photo::after { /* bottom vignette to ground the portrait */
+    content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: linear-gradient(to top, rgba(8,6,4,0.9) 0%, rgba(8,6,4,0.18) 34%, transparent 60%);
+  }
+  .person:nth-child(1) .photo { background: radial-gradient(120% 95% at 50% 14%, #6f5836 0%, #2c2114 52%, #120c06 100%); }
+  .person:nth-child(2) .photo { background: radial-gradient(120% 95% at 50% 14%, #7a4f3c 0%, #2a1811 52%, #120b07 100%); }
+  .person:nth-child(3) .photo { background: radial-gradient(120% 95% at 50% 14%, #5c5638 0%, #221f12 52%, #100e07 100%); }
+  .person:nth-child(4) .photo { background: radial-gradient(120% 95% at 50% 14%, #6c4a54 0%, #281820 52%, #120a0d 100%); }
+  .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .photo svg.sil { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 96%; z-index: 1; }
+  .person:nth-child(2) .photo svg.sil { transform: translateX(-50%) scale(1.05); }
+  .person:nth-child(3) .photo svg.sil { transform: translateX(-50%) scale(0.97); }
+  .person:nth-child(4) .photo svg.sil { transform: translateX(-50%) scale(1.03); }
+  .dot-on {
+    position: absolute; top: 7px; right: 7px; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold); z-index: 3;
+    box-shadow: 0 0 0 2px rgba(11,8,5,0.65), 0 0 8px rgba(231,198,145,0.6);
+  }
+  .like {
+    position: relative; z-index: 3;
+    width: 34px; height: 34px; margin: -17px auto 0;
+    display: grid; place-items: center;
+    background: var(--gold-grad); color: #221805;
+    border: none; border-radius: 50%; cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4);
+    transition: transform .18s cubic-bezier(.2,.7,.2,1);
+  }
+  .like:hover { transform: scale(1.14); }
+  .like:active { transform: scale(0.94); }
+
+  .near-card {
+    display: flex; align-items: center; gap: 14px;
+    background: rgba(231,198,145,0.06);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 16px; margin-bottom: 16px;
+  }
+  .near-card .gi { flex: none; color: var(--gold); }
+  .near-card .n1 { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--gold); line-height: 1.2; }
+  .near-card .n2 { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+  .app-cta {
+    width: 100%; font-size: 16px; font-weight: 700; color: #221805;
+    background: var(--gold-grad); border: none; border-radius: 16px;
+    padding: 16px 0; cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
+    transition: filter .2s ease;
+  }
+  .app-cta:hover { filter: brightness(1.05); }
+
+  /* ── Sections ────────────────────────── */
+  section { position: relative; z-index: 1; padding: 96px 0; }
+  #how { scroll-margin-top: 84px; }
+  .head { text-align: center; margin-bottom: 56px; }
+  .kicker { display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+  h2 { font-size: clamp(32px, 4.2vw, 48px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.06; }
+  .head p { font-size: 18px; color: var(--ink-2); margin-top: 14px; }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .step {
+    position: relative;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 32px 28px;
+    overflow: hidden;
+    transition: transform .3s cubic-bezier(.2,.7,.2,1), border-color .3s ease;
+  }
+  .step::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(231,198,145,0.4), transparent); opacity: 0; transition: opacity .3s ease; }
+  .step:hover { transform: translateY(-6px); border-color: var(--line-2); }
+  .step:hover::before { opacity: 1; }
+  .step .num {
+    display: grid; place-items: center; width: 44px; height: 44px;
+    font-size: 16px; font-weight: 800; color: var(--gold);
+    border: 1px solid rgba(231,198,145,0.24); border-radius: 13px; margin-bottom: 22px;
+    background: linear-gradient(160deg, rgba(231,198,145,0.14), rgba(231,198,145,0.03));
+    box-shadow: inset 0 1px 0 rgba(244,226,188,0.18), 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .step h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .step p { font-size: 15px; color: var(--ink-2); }
+
+  /* ── CTA ─────────────────────────────── */
+  .cta { padding-top: 56px; padding-bottom: 112px; }
+  .cta-box {
+    position: relative; overflow: hidden; text-align: center;
+    background: linear-gradient(180deg, var(--surface-2) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-xl);
+    padding: 80px 40px;
+  }
+  .cta-box::before { content: ""; position: absolute; top: -40%; left: 50%; transform: translateX(-50%); width: 520px; height: 420px; background: radial-gradient(closest-side, rgba(231,198,145,0.14), transparent 70%); pointer-events: none; }
+  .cta-box h2 { margin-bottom: 14px; }
+  .cta-box p { font-size: 18px; color: var(--ink-2); margin-bottom: 36px; position: relative; }
+  .cta-box .btn-gold { font-size: 17px; padding: 18px 46px; position: relative; }
+
+  /* ── Footer ──────────────────────────── */
+  footer { border-top: 1px solid var(--line); padding: 40px 0; }
+  .foot { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--ink-3); }
+  .foot .brand { font-size: 18px; font-weight: 800; background: none; -webkit-text-fill-color: currentColor; color: var(--gold-hi); }
+
+  /* ── Reveal ──────────────────────────── */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ── Modal ───────────────────────────── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: rgba(4,3,2,0.68);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    opacity: 0; pointer-events: none; transition: opacity .28s ease;
+  }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    position: relative; width: 100%; max-width: 440px; text-align: center;
+    background: linear-gradient(180deg, var(--surface-2) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line-2); border-radius: var(--r-xl);
+    padding: 54px 46px 46px;
+    box-shadow: 0 50px 120px rgba(0,0,0,0.7);
+    transform: translateY(18px) scale(0.96); transition: transform .3s cubic-bezier(.2,.7,.2,1);
+  }
+  .overlay.open .modal { transform: none; }
+  .modal .x {
+    position: absolute; top: 16px; right: 16px; width: 40px; height: 40px;
+    display: grid; place-items: center; font-size: 14px; color: var(--ink-2);
+    background: rgba(231,198,145,0.06); border: none; border-radius: 50%; cursor: pointer;
+    transition: background .2s ease, transform .15s ease;
+  }
+  .modal .x:hover { background: rgba(231,198,145,0.16); }
+  .modal .x:active { transform: scale(0.92); }
+  .modal .m-ic {
+    width: 60px; height: 60px; margin: 0 auto 22px; display: grid; place-items: center; color: var(--gold);
+    background: linear-gradient(160deg, rgba(231,198,145,0.14), rgba(231,198,145,0.03));
+    border: 1px solid rgba(231,198,145,0.24); border-radius: 20px;
+    box-shadow: inset 0 1px 0 rgba(244,226,188,0.18), 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .modal h3 { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 10px; }
+  .modal p { font-size: 16px; color: var(--ink-2); margin-bottom: 28px; }
+  .modal input {
+    font-family: inherit; width: 100%; font-size: 16px; color: var(--ink);
+    padding: 16px 22px; text-align: center; margin-bottom: 12px;
+    background: rgba(231,198,145,0.04); border: 1px solid var(--line-2); border-radius: 100px; outline: none;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .modal input::placeholder { color: #9a907e; opacity: 1; }
+  .modal input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231,198,145,0.28); }
+  .modal .btn-gold { width: 100%; font-size: 16px; padding: 17px 0; }
+  .modal .ok { display: none; }
+  .modal.done .form { display: none; }
+  .modal.done .ok { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .btn, .like, .step, .app-cta, .modal, .overlay, .phone, .grain { transition: none !important; }
+    .btn-gold:hover, .btn-ghost:active, .step:hover, .like:hover, .phone:hover { transform: none; }
+  }
+
+  /* ── Responsive: tablet + stacking ───── */
+  @media (max-width: 940px) {
+    .wrap { padding: 0 22px; }
+    .hero { grid-template-columns: 1fr; padding-top: 104px; padding-bottom: 56px; gap: 40px; }
+    .ambient { inset: -40px 0; }
+    h1 { line-height: 1.05; }
+    .feats { max-width: none; }
+    .phone { width: 300px; transform: none; will-change: auto; }
+    .phone:hover { transform: none; }
+    section { padding: 64px 0; }
+    .head { margin-bottom: 36px; }
+    .steps { grid-template-columns: 1fr; gap: 14px; }
+    .step {
+      display: grid; grid-template-columns: 44px 1fr; column-gap: 18px; row-gap: 4px;
+      align-items: center; padding: 22px 24px;
+    }
+    .step .num { margin: 0; grid-row: 1 / 3; }
+    .step h3 { align-self: end; }
+    .step p { grid-column: 2; align-self: start; }
+    .cta { padding-top: 16px; padding-bottom: 64px; }
+    .cta-box { padding: 60px 28px; }
+    .pill-city { padding: 7px 12px; font-size: 13px; gap: 5px; }
+  }
+
+  /* ── Responsive: phones ──────────────── */
+  @media (max-width: 560px) {
+    .pill-city { display: none; }
+    .hero { padding-top: 100px; padding-bottom: 48px; gap: 32px; }
+    h1 { font-size: clamp(34px, 8.6vw, 46px); line-height: 1.06; }
+    .lede { font-size: 18px; margin-bottom: 26px; }
+    .feats { margin-bottom: 26px; }
+    .feat { padding: 15px 0; }
+    .feat p { font-size: 15px; }
+    .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; }
+    .hero-actions .btn-gold, .hero-actions .btn-ghost { width: 100%; flex: none; padding-left: 20px; padding-right: 20px; text-align: center; }
+    section { padding: 44px 0; }
+    .head { margin-bottom: 24px; }
+    h2 { font-size: clamp(28px, 7.6vw, 36px); }
+    .step { padding: 20px 20px; }
+    .cta { padding-top: 8px; padding-bottom: 48px; }
+    .cta-box { padding: 48px 22px; }
+    .near-card { gap: 12px; padding: 14px 16px; }
+    .near-card .n1 { font-size: 15px; white-space: nowrap; }
+    .modal { padding: 44px 26px 34px; }
+  }
+
+  @media (max-width: 360px) {
+    .wrap { padding: 0 16px; }
+    .phone { width: min(280px, 100%); }
+    .people { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<nav>
+  <div class="wrap nav-inner">
+    <div class="brand">hiya.</div>
+    <div class="nav-right">
+      <span class="pill-city">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        Алматы
+      </span>
+      <button class="btn btn-gold" onclick="openModal()"><span>Получить доступ</span></button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────── -->
+<header class="hero wrap">
+  <div class="ambient">
+    <div class="glow g1"></div>
+    <div class="glow g2"></div>
+    <div class="bokeh">
+      <span class="b1"></span><span class="b2"></span><span class="b3"></span>
+      <span class="b4"></span><span class="b5"></span><span class="b6"></span>
+    </div>
+  </div>
+
+  <div class="hero-copy">
+    <h1>Не гадай,<br>можно ли <span class="em">подойти</span></h1>
+    <p class="lede">Узнай, кто рядом сейчас открыт к знакомству.</p>
+
+    <div class="feats">
+      <div class="feat">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span>
+        <p>Только те, кто открыт к знакомству</p>
+      </div>
+      <div class="feat">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.7a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-2a2 2 0 0 0 1.3-1.2L12 3Z"/></svg></span>
+        <p>Взаимный лайк — только тогда можно написать</p>
+      </div>
+      <div class="feat">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="10" x="5" y="11" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+        <p>Без неловких подходов вслепую</p>
+      </div>
+      <div class="feat">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <p>В кафе, барах и других местах города</p>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <button class="btn btn-gold" onclick="openModal()"><span>Получить доступ</span></button>
+      <button class="btn btn-ghost" onclick="document.getElementById('how').scrollIntoView({block:'start'})">Как это работает</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="notch"></span>
+          <span class="sig">
+            <svg width="17" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="7.5" width="3" height="4.5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+            <svg width="22" height="12" viewBox="0 0 24 12" fill="none"><rect x="0.6" y="0.6" width="19" height="10.8" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2.4" y="2.4" width="14" height="7.2" rx="1.8" fill="currentColor"/><path d="M21.4 4.2v3.6c1-.4 1-3.2 0-3.6Z" fill="currentColor"/></svg>
+          </span>
+        </div>
+
+        <div class="app-head">
+          <span class="app-brand">hiya.</span>
+          <span class="app-loc">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            Алматы
+          </span>
+        </div>
+
+        <div class="app-title">Рядом</div>
+        <div class="app-place">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          Кафе «Coffee Room»
+        </div>
+
+        <div class="people">
+          <!-- Реальные фото вставляются как <img src="..."> первым ребёнком .photo -->
+          <div class="person">
+            <div class="photo">
+              <span class="dot-on"></span>
+              <svg class="sil" viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="p1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b7350"/><stop offset="1" stop-color="#3a2d1c"/></linearGradient></defs><g fill="url(#p1)"><path d="M31 45c0-13 8-21 19-21s19 8 19 21c0 6-2 11-5 14-3 3-8 5-14 5s-11-2-14-5c-3-3-5-8-5-14Z"/><path d="M32 40c-2-11 6-20 18-20s20 9 18 20c-2-4-4-6-6-7-3 2-7 3-12 3s-9-1-12-3c-2 1-4 3-6 7Z" fill="#2f2618"/><path d="M50 68c-19 0-30 12-33 33-1 6-1 12 0 18h66c1-6 1-12 0-18-3-21-14-33-33-33Z"/></g></svg>
+            </div>
+            <button class="like" aria-label="Лайк"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.6-4.9-10.1-9.6C.2 8.3 2.3 4.4 6 4.4c2.1 0 4 1.1 6 3.5 2-2.4 3.9-3.5 6-3.5 3.7 0 5.8 3.9 4.1 7C19.6 16.1 12 21 12 21Z"/></svg></button>
+          </div>
+          <div class="person">
+            <div class="photo">
+              <span class="dot-on"></span>
+              <svg class="sil" viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="p2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#916553"/><stop offset="1" stop-color="#3a231b"/></linearGradient></defs><g fill="url(#p2)"><path d="M26 52c-3-13-1-33 6-42 4-5 10-8 18-8s14 3 18 8c7 9 9 29 6 42l-9-5c1-3 1-8-1-13-3 5-8 8-14 8s-11-3-14-8c-2 5-2 10-1 13l-9 5Z" fill="#3a2519"/><path d="M32 46c0-13 8-22 18-22s18 9 18 22c0 6-2 11-5 14-3 3-8 5-13 5s-10-2-13-5c-3-3-5-8-5-14Z"/><path d="M50 68c-18 0-29 12-32 33-1 6-1 12 0 18h64c1-6 1-12 0-18-3-21-14-33-32-33Z"/></g></svg>
+            </div>
+            <button class="like" aria-label="Лайк"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.6-4.9-10.1-9.6C.2 8.3 2.3 4.4 6 4.4c2.1 0 4 1.1 6 3.5 2-2.4 3.9-3.5 6-3.5 3.7 0 5.8 3.9 4.1 7C19.6 16.1 12 21 12 21Z"/></svg></button>
+          </div>
+          <div class="person">
+            <div class="photo">
+              <span class="dot-on"></span>
+              <svg class="sil" viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="p3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f7852"/><stop offset="1" stop-color="#2c2917"/></linearGradient></defs><g fill="url(#p3)"><path d="M29 40c0-14 9-22 21-22s21 8 21 22c0 5-2 9-4 12-1-9-8-15-17-15s-16 6-17 15c-2-3-4-7-4-12Z" fill="#2c2416"/><path d="M32 46c0-12 8-20 18-20s18 8 18 20c0 6-2 11-5 14-3 3-8 5-13 5s-10-2-13-5c-3-3-5-8-5-14Z"/><path d="M50 68c-18 0-29 12-32 33-1 6-1 12 0 18h64c1-6 1-12 0-18-3-21-14-33-32-33Z"/></g></svg>
+            </div>
+            <button class="like" aria-label="Лайк"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.6-4.9-10.1-9.6C.2 8.3 2.3 4.4 6 4.4c2.1 0 4 1.1 6 3.5 2-2.4 3.9-3.5 6-3.5 3.7 0 5.8 3.9 4.1 7C19.6 16.1 12 21 12 21Z"/></svg></button>
+          </div>
+          <div class="person">
+            <div class="photo">
+              <span class="dot-on"></span>
+              <svg class="sil" viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="p4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#95707c"/><stop offset="1" stop-color="#2e1e26"/></linearGradient></defs><g fill="url(#p4)"><path d="M25 54c-2-14 0-34 8-43 4-4 10-7 17-7s13 3 17 7c8 9 10 29 8 43-2-6-4-11-7-14 1-4 0-9-2-13-3 5-8 8-16 8s-13-3-16-8c-2 4-3 9-2 13-3 3-5 8-7 14Z" fill="#2e1e26"/><path d="M32 46c0-13 8-22 18-22s18 9 18 22c0 6-2 11-5 14-3 3-8 5-13 5s-10-2-13-5c-3-3-5-8-5-14Z"/><path d="M50 68c-18 0-29 12-32 33-1 6-1 12 0 18h64c1-6 1-12 0-18-3-21-14-33-32-33Z"/></g></svg>
+            </div>
+            <button class="like" aria-label="Лайк"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.6-4.9-10.1-9.6C.2 8.3 2.3 4.4 6 4.4c2.1 0 4 1.1 6 3.5 2-2.4 3.9-3.5 6-3.5 3.7 0 5.8 3.9 4.1 7C19.6 16.1 12 21 12 21Z"/></svg></button>
+          </div>
+        </div>
+
+        <div class="near-card">
+          <span class="gi"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <div>
+            <div class="n1">4 человека рядом</div>
+            <div class="n2">открыты к знакомству</div>
+          </div>
+        </div>
+
+        <button class="app-cta">Посмотреть</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── How it works ─────────────────────── -->
+<section id="how" class="wrap">
+  <div class="head reveal">
+    <span class="kicker">Как это работает</span>
+    <h2>Три простых шага</h2>
+    <p>От «открыл» до «подошёл» — без неловкости.</p>
+  </div>
+  <div class="steps">
+    <div class="step reveal">
+      <div class="num">1</div>
+      <h3>Открыл приложение</h3>
+      <p>Только когда действительно хочешь познакомиться.</p>
+    </div>
+    <div class="step reveal">
+      <div class="num">2</div>
+      <h3>Поставил лайк</h3>
+      <p>Только людям рядом.</p>
+    </div>
+    <div class="step reveal">
+      <div class="num">3</div>
+      <h3>Симпатия взаимна</h3>
+      <p>Оба получают уведомление. Можно спокойно подойти.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ──────────────────────────────── -->
+<section class="cta wrap">
+  <div class="cta-box reveal">
+    <h2>Попробовать первым</h2>
+    <p>Скоро в Алматы.</p>
+    <button class="btn btn-gold" onclick="openModal()"><span>Получить доступ</span></button>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div class="brand">hiya.</div>
+    <div>© 2026 hiya</div>
+  </div>
+</footer>
+
+<!-- ── Modal ────────────────────────────── -->
+<div class="overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox">
+    <button class="x" onclick="closeModal()" aria-label="Закрыть">✕</button>
+    <div class="form">
+      <div class="m-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="4"/><path d="m22 7-10 6L2 7"/></svg></div>
+      <h3>Ранний доступ</h3>
+      <p>Оставь почту — пришлём приглашение.</p>
+      <input type="email" placeholder="you@example.com" id="email">
+      <button class="btn btn-gold" onclick="submitEmail()"><span>Записаться</span></button>
+    </div>
+    <div class="ok">
+      <div class="m-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <h3>Ты в списке</h3>
+      <p>Напишем, как только запустимся в Алматы.</p>
+      <button class="btn btn-gold" onclick="closeModal()"><span>Готово</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var modal = document.getElementById('modal');
+  var modalBox = document.getElementById('modalBox');
+
+  function openModal() {
+    window._modalReturn = document.activeElement;
+    modalBox.classList.remove('done');
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function(){ var el = document.getElementById('email'); if (el) el.focus(); }, 60);
+  }
+  function closeModal() {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+    if (window._modalReturn && window._modalReturn.focus) window._modalReturn.focus({ preventScroll: true });
+  }
+  function submitEmail() {
+    modalBox.classList.add('done');
+    setTimeout(function(){ var b = modalBox.querySelector('.ok .btn-gold'); if (b) b.focus(); }, 40);
+  }
+
+  // Focus trap inside the modal
+  modal.addEventListener('keydown', function(e){
+    if (e.key !== 'Tab') return;
+    var f = Array.prototype.slice.call(modalBox.querySelectorAll('button, input'))
+      .filter(function(el){ return el.offsetParent !== null; });
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+
+  // Reveal on scroll — with safeguards so content can never stay hidden
+  (function(){
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(function(el){ el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
+    els.forEach(function(el){ io.observe(el); });
+    setTimeout(function(){
+      document.querySelectorAll('.reveal:not(.in)').forEach(function(el){ el.classList.add('in'); });
+    }, 1600);
+  })();
+</script>
+</body>
+</html>

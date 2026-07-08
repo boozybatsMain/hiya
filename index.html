@@ -238,6 +238,9 @@
     font-variant-numeric: tabular-nums;
     background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
+  /* пока число едет из базы — пульсирующие точки, без «прыжка» со 151 */
+  .wc-num.wait { animation: wc-wait 1s ease-in-out infinite; letter-spacing: 0.06em; }
+  @keyframes wc-wait { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.85; } }
   .wc-of { font-size: 17px; font-weight: 600; color: var(--ink-2); }
   .wc-of b { color: var(--ink); font-weight: 800; }
   .wc-bar { position: relative; z-index: 1; height: 9px; border-radius: 100px; background: rgba(231,198,145,0.1); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.4); }
@@ -457,8 +460,10 @@
   .pcard-like {
     position: absolute; left: calc(10 * var(--u)); bottom: calc(9 * var(--u)); z-index: 5;
     display: inline-flex; align-items: center; gap: calc(6 * var(--u)); height: calc(30 * var(--u)); padding: 0 calc(12 * var(--u)) 0 calc(9 * var(--u));
+    /* iOS Safari: НЕЛЬЗЯ backdrop-filter внутри 3D-трансформаций — рисует
+       фантомные перевёрнутые копии блюра поверх страницы (перекрывало футер) */
     border-radius: 100px; font-size: calc(12 * var(--u)); font-weight: 700; color: var(--gold-hi);
-    background: rgba(18,13,8,0.42); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    background: rgba(18,13,8,0.68);
     border: 1px solid rgba(244,226,188,0.5); box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     animation: like-pulse 2.8s ease-in-out infinite;
   }
@@ -483,7 +488,7 @@
   /* in-phone match sheet */
   .match-sheet {
     position: absolute; inset: 0; z-index: 40; display: flex; align-items: flex-end; justify-content: center;
-    padding: calc(12 * var(--u)); background: rgba(6,4,2,0.6); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    padding: calc(12 * var(--u)); background: rgba(6,4,2,0.72);
     opacity: 0; pointer-events: none; transition: opacity .28s ease; border-radius: var(--ip3d-rin);
   }
   .match-sheet.open { opacity: 1; pointer-events: auto; }
@@ -656,35 +661,71 @@
 
   /* ── Responsive: phones ──────────────── */
   @media (max-width: 560px) {
+    /* слим-хедер: только логотип слева, без кнопки и без полосы */
     .pill-city { display: none; }
-    .btn-gold { font-size: 13.5px; padding: 11px 17px; }
-    /* phone sized from viewport WIDTH so the app UI stays readable like a
-       real product; counter+CTA continue right below (small scroll is fine) */
-    .ip3d-scene { --ip3d-w: min(62vw, 250px); }
-    .hero { gap: 12px; padding-top: 80px; padding-bottom: 10px; min-height: 0; }
-    .waitcount { margin: 0 auto; }
-    h1 { font-size: clamp(26px, 7.7vw, 36px); line-height: 1.07; margin-bottom: 8px; }
-    .lede { font-size: 14.5px; margin-bottom: 0; }
-    .waitcount { padding: 12px 15px; gap: 7px; border-radius: 16px; }
-    .wc-num { font-size: 28px; }
-    .wc-of { font-size: 14px; }
-    .wc-live { font-size: 10.5px; letter-spacing: 0.03em; }
-    .wc-label { font-size: 12.5px; }
-    .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 0; }
-    .hero-actions .btn-gold, .hero-actions .btn-ghost { width: 100%; padding-left: 20px; padding-right: 20px; text-align: center; }
-    section { padding: 48px 0; }
-    .adv { padding-top: 6px; }
-    .head { margin-bottom: 22px; }
-    h2 { font-size: clamp(27px, 7.6vw, 34px); }
-    .bento { gap: 10px; }
-    .b-card { padding: 16px; gap: 12px; }
-    .b-card p { font-size: 14px; }
-    .b-card .ic { width: 40px; height: 40px; }
-    .adv-actions { margin-top: 26px; }
+    nav {
+      background: linear-gradient(180deg, rgba(10,8,6,0.92) 0%, rgba(10,8,6,0.5) 62%, transparent 100%);
+      border-bottom: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
+    nav .btn-gold { display: none; }
+    .nav-inner { height: 46px; }
+    .brand { font-size: 19px; }
+
+    /* фон: показываем именно чашку кофе (она слева на фото) и меньше топим в темноту */
+    .site-bg-photo {
+      object-position: 18% 62%; opacity: 0.62;
+      filter: brightness(0.72) saturate(1.15) blur(0.5px);
+      -webkit-mask: radial-gradient(170% 130% at 50% 55%, #000 55%, transparent 100%);
+              mask: radial-gradient(170% 130% at 50% 55%, #000 55%, transparent 100%);
+    }
+    .site-bg::after { background: linear-gradient(180deg, rgba(10,8,6,0.34) 0%, rgba(10,8,6,0.16) 34%, rgba(10,8,6,0.36) 66%, var(--bg) 100%); }
+
+    /* компактный первый экран */
+    .ip3d-scene { --ip3d-w: min(60vw, 236px); }
+    .hero { gap: 10px; padding-top: 60px; padding-bottom: 8px; min-height: 0; }
+    h1 { font-size: clamp(23px, 6.9vw, 28px); line-height: 1.08; margin-bottom: 6px; }
+    .lede { font-size: 13.5px; margin-bottom: 0; }
+    .waitcount { margin: 0 auto; padding: 11px 14px; gap: 7px; border-radius: 14px; max-width: 400px; }
+    .wc-num { font-size: 23px; }
+    .wc-of { font-size: 12.5px; }
+    .wc-live { font-size: 9px; letter-spacing: 0.03em; }
+    .wc-live i { width: 6px; height: 6px; }
+    .wc-bar { height: 7px; }
+    .wc-label { font-size: 11.5px; }
+    .hero-actions { flex-direction: column; align-items: stretch; gap: 10px; margin-top: 0; max-width: 400px; }
+    .hero-actions .btn-gold { font-size: 14px; padding: 13px 20px; width: 100%; text-align: center; }
+    .btn-ghost { font-size: 14px; padding: 12px 20px; }
+
+    /* секции: всё на размер меньше */
+    section { padding: 40px 0; }
+    .adv { padding-top: 4px; }
+    .head { margin-bottom: 18px; }
+    .head p { font-size: 14px; margin-top: 8px; }
+    h2 { font-size: clamp(21px, 5.9vw, 26px); }
+    .bento { gap: 8px; }
+    .b-card { padding: 13px; gap: 9px; border-radius: 15px; }
+    .b-card p { font-size: 12.5px; }
+    .b-card .ic { width: 34px; height: 34px; border-radius: 11px; }
+    .b-card .ic svg { width: 17px; height: 17px; }
+    .adv-actions { margin-top: 18px; }
     .adv-actions .btn-ghost { width: 100%; text-align: center; }
-    .cta { padding-bottom: 48px; }
-    .cta-box { padding: 46px 22px; }
-    .modal { padding: 44px 26px 34px; }
+    /* воздух между кнопкой «Как это работает» и заголовком секции */
+    #how { padding-top: 64px; }
+    .step { grid-template-columns: 38px 1fr; column-gap: 13px; padding: 15px 16px; border-radius: 18px; }
+    .step .num { width: 38px; height: 38px; font-size: 14px; border-radius: 11px; }
+    .step h3 { font-size: 15.5px; }
+    .step p { font-size: 12.5px; }
+    .steps { gap: 9px; }
+    .cta { padding-bottom: 40px; }
+    .cta-box { padding: 34px 20px; border-radius: 24px; }
+    .cta-box p { font-size: 14px; margin-bottom: 22px; }
+    .cta-box .btn-gold { font-size: 14.5px; padding: 14px 30px; }
+    footer { padding: 24px 0; }
+    .foot { font-size: 12px; }
+    .foot .brand { font-size: 15px; }
+    .modal { padding: 40px 24px 30px; }
+    .modal h3 { font-size: 22px; }
+    .modal p { font-size: 14px; margin-bottom: 22px; }
   }
 
   @media (max-width: 360px) {
@@ -737,7 +778,7 @@
       <span class="wc-live"><i></i> в реальном времени</span>
     </div>
     <div class="wc-headline">
-      <span class="wc-num" id="wcNum">151</span>
+      <span class="wc-num" id="wcNum">···</span>
       <span class="wc-of"><b id="wcNoun">человек</b> из 300</span>
     </div>
     <div class="wc-bar"><span id="wcFill"></span></div>
@@ -1039,8 +1080,10 @@
   function hideMatch() { document.getElementById('matchSheet').classList.remove('open'); }
 
   // ── Shared waitlist counter (Firebase Realtime DB, local fallback) ─
+  // Пока не пришло значение из базы, число скрыто за лоадером «···» —
+  // никакого 151, которое вдруг прыгает на 152.
   (function () {
-    var BASE = 151, TARGET = 300, signups = 0, shown = BASE;
+    var BASE = 151, TARGET = 300, signups = 0, shown = null, settled = false;
     var numEl = document.getElementById('wcNum');
     var nounEl = document.getElementById('wcNoun');
     var fillEl = document.getElementById('wcFill');
@@ -1054,7 +1097,7 @@
     }
     function animateNum(from, to) {
       if (!numEl) return;
-      if (from === to) { numEl.textContent = to; return; }
+      if (from === null || from === to) { numEl.textContent = to; return; }
       var start = null, dur = 650;
       function step(ts) {
         if (start === null) start = ts;
@@ -1067,12 +1110,12 @@
     }
     function render() {
       var total = BASE + signups;
+      if (numEl) numEl.classList.remove('wait');
       animateNum(shown, total); shown = total;
       if (nounEl) nounEl.textContent = ruPlural(total, 'человек', 'человека', 'человек');
       if (fillEl) fillEl.style.width = Math.max(4, Math.min(100, total / TARGET * 100)).toFixed(1) + '%';
     }
     window.hiyaWaitTotal = function () { return BASE + signups; };
-    render();
 
     var LKEY = 'hiya_wait_signups';
     function lget() { try { return parseInt(localStorage.getItem(LKEY) || '0', 10) || 0; } catch (e) { return 0; } }
@@ -1080,6 +1123,9 @@
 
     var cfg = window.FIREBASE_CONFIG;
     if (cfg && cfg.databaseURL) {
+      if (numEl) numEl.classList.add('wait');
+      // если база не ответила за 3.5с — показываем базовое число, не висим
+      var failsafe = setTimeout(function () { if (!settled) { settled = true; render(); } }, 3500);
       (async function () {
         try {
           var appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
@@ -1089,13 +1135,15 @@
           var countRef = dbMod.ref(db, 'waitlist/signups');
           dbMod.onValue(countRef, function (snap) {
             var v = snap.val();
-            if (typeof v === 'number') { signups = Math.max(signups, v); render(); }
+            if (typeof v === 'number') signups = Math.max(signups, v);
+            settled = true; clearTimeout(failsafe); render();
           });
           window.hiyaBump = function () {
             signups += 1; render();                                   // instant, optimistic
             try { dbMod.runTransaction(countRef, function (c) { return (c || 0) + 1; }); } catch (e) {}
           };
         } catch (e) {
+          settled = true; clearTimeout(failsafe);
           signups = lget(); render();
           window.hiyaBump = function () { signups = lget() + 1; lset(signups); render(); };
         }

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<noscript><style>.reveal{opacity:1 !important;transform:none !important}.intro-pop{display:none !important}.ip3d-screen.intro-wait .pcard{opacity:1 !important}</style></noscript>
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}.intro-pop{display:none !important}</style></noscript>
 <!-- ── Аналитика: Google Analytics 4 ────────────────────────────────
      Вставь свой Measurement ID (вида G-XXXXXXXXXX) из GA4 в GA_ID ниже.
      Пока стоит заглушка — аналитика спит и ничего лишнего не грузит.   -->
@@ -485,28 +485,18 @@
     background: rgba(18,13,8,0.62); border: 1px solid rgba(244,226,188,0.4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   }
 
-  /* in-phone intro: «7 человек рядом» + режим знакомства */
-  .ip3d-screen.intro-wait .pcard { opacity: 0; }
-  .cards-in .pcard { animation: card-in .55s cubic-bezier(.2,.8,.2,1) both; }
-  .cards-in .pcard:nth-child(2) { animation-delay: .07s; }
-  .cards-in .pcard:nth-child(3) { animation-delay: .14s; }
-  .cards-in .pcard:nth-child(4) { animation-delay: .21s; }
-  /* страховка: через секунду после дисмисса карточки видимы безусловно */
-  .app-feed.cards-done .pcard { animation: none !important; opacity: 1 !important; transform: none !important; }
-  @keyframes card-in {
-    from { opacity: 0; transform: translateY(14px) scale(.94); }
-    to   { opacity: 1; transform: none; }
-  }
+  /* in-phone intro: «18 человек рядом» + режим знакомства.
+     Фото за попапом остаются слегка видимыми сквозь затемнение. */
   .intro-pop {
     /* --pu: масштаб попапа; на мобиле крупнее самого телефона, чтобы был заметен */
     --pu: var(--u);
     position: absolute; inset: 0; z-index: 42; display: flex; align-items: center; justify-content: center;
-    padding: calc(14 * var(--pu)); background: rgba(6,4,2,0.58);
+    padding: calc(14 * var(--pu)); background: rgba(6,4,2,0.42);
     opacity: 0; pointer-events: none; transition: opacity .35s ease; border-radius: var(--ip3d-rin);
   }
   .intro-pop.open { opacity: 1; pointer-events: auto; }
   .ipop-card {
-    width: 100%; max-width: min(calc(238 * var(--pu)), 96%); text-align: center;
+    width: 100%; max-width: min(calc(216 * var(--pu)), 92%); text-align: center;
     padding: calc(18 * var(--pu)) calc(15 * var(--pu)) calc(14 * var(--pu)); border-radius: calc(20 * var(--pu));
     background: linear-gradient(180deg, #221a12 0%, #131009 100%); border: 1px solid rgba(231,198,145,0.38);
     box-shadow: 0 calc(16 * var(--pu)) calc(40 * var(--pu)) rgba(0,0,0,0.55), 0 0 calc(34 * var(--pu)) rgba(231,198,145,0.16), inset 0 1px 0 rgba(244,226,188,0.14);
@@ -702,8 +692,7 @@
     .btn, .pcard, .step, .b-card, .app-cta, .modal, .overlay, .grain { transition: none !important; }
     .btn-gold:hover, .btn-ghost:active, .step:hover, .b-card:hover { transform: none; }
     .wc-halo, .wc-bar > span::after, .pcard-like, .ms-heart { animation: none !important; }
-    .ipop-btn, .ipop-btn::after, .ipop-card, .cards-in .pcard { animation: none !important; }
-    .cards-in .pcard { opacity: 1; }
+    .ipop-btn, .ipop-btn::after, .ipop-card { animation: none !important; }
     [data-speed] { transform: none !important; }
   }
 
@@ -755,7 +744,7 @@
     .site-bg::after { background: linear-gradient(180deg, rgba(10,8,6,0.34) 0%, rgba(10,8,6,0.16) 34%, rgba(10,8,6,0.36) 66%, var(--bg) 100%); }
 
     /* попап на маленьком телефоне рисуем крупнее его собственного масштаба */
-    .intro-pop { --pu: calc(var(--u) * 1.55); }
+    .intro-pop { --pu: calc(var(--u) * 1.35); }
 
     /* компактный первый экран: тайтл + телефон + счётчик + кнопка обязаны
        влезть в 100svh (видимая зона НАД панелями Safari). Всё, кроме
@@ -878,7 +867,7 @@
 
   <div class="hero-actions">
     <button class="btn btn-gold" onclick="openModal('hero')"><span>Получить ранний доступ</span></button>
-    <div class="cta-note">Получишь приглашение в день открытия</div>
+    <div class="cta-note">Бесплатно. Пригласим одним из первых.</div>
   </div>
 
   <div class="stage">
@@ -899,7 +888,7 @@
         <div class="ip3d-rail ip3d-rail-top" aria-hidden="true"></div>
         <div class="ip3d-rail ip3d-rail-bottom" aria-hidden="true"></div>
         <div class="ip3d-front">
-          <div class="ip3d-screen intro-wait">
+          <div class="ip3d-screen">
             <div class="ip3d-earpiece" aria-hidden="true"></div>
             <div class="ip3d-island" aria-hidden="true"></div>
             <div class="statusbar">
@@ -921,7 +910,7 @@
             <div class="app-title">Рядом</div>
             <div class="app-place">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-              «Coffee&nbsp;Room» · 7&nbsp;рядом
+              «Coffee&nbsp;Room» · 18&nbsp;рядом
             </div>
 
             <div class="app-feed">
@@ -971,7 +960,7 @@
             <div class="intro-pop open" id="introPop">
               <div class="ipop-card">
                 <div class="ipop-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-                <div class="ipop-title"><b class="ipop-hl">7 человек</b> рядом готовы познакомиться</div>
+                <div class="ipop-title"><b class="ipop-hl">18 человек</b> рядом готовы познакомиться</div>
                 <button class="ipop-btn" id="introBtn" type="button"><span>Перейти в режим знакомства</span></button>
               </div>
             </div>
@@ -1049,7 +1038,7 @@
     <h2>Попробовать первым</h2>
     <p>Скоро в Алматы.</p>
     <button class="btn btn-gold" onclick="openModal('cta_bottom')"><span>Получить ранний доступ</span></button>
-    <div class="cta-note">Получишь приглашение в день открытия</div>
+    <div class="cta-note">Бесплатно. Пригласим одним из первых.</div>
   </div>
 </section>
 
@@ -1168,25 +1157,24 @@
   });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { if (document.getElementById('matchSheet').classList.contains('open')) { hideMatch(); return; } if (modal.classList.contains('open')) closeModal(); } });
 
-  // ── In-app intro: «режим знакомства», авто-скрытие через 2 сек ────
+  // ── In-app intro: «режим знакомства» ──────────────────────────────
+  // Сам скрывается только когда прошло ≥3 секунд И человек заскроллил.
   (function () {
     var pop = document.getElementById('introPop');
-    var screen = document.querySelector('.ip3d-screen');
-    var feed = document.querySelector('.app-feed');
-    if (!pop || !screen) return;
+    if (!pop) return;
     var done = false;
     function dismiss(via) {
       if (done) return; done = true;
       pop.classList.remove('open');
-      screen.classList.remove('intro-wait');
-      if (feed) feed.classList.add('cards-in');
       if (window.track) track('intro_dismiss', { via: via });
       setTimeout(function () { pop.style.display = 'none'; }, 400);
-      setTimeout(function () { if (feed) feed.classList.add('cards-done'); }, 1000);
     }
     var b = document.getElementById('introBtn');
     if (b) b.addEventListener('click', function () { dismiss('button'); });
-    setTimeout(function () { dismiss('auto'); }, 10000);
+    var t0 = Date.now(), scrolled = false;
+    function maybeAuto() { if (scrolled && Date.now() - t0 >= 3000) dismiss('scroll'); }
+    window.addEventListener('scroll', function () { scrolled = true; maybeAuto(); }, { passive: true });
+    setTimeout(maybeAuto, 3050);
   })();
 
   // ── In-app match demo ────────────────────────────────────────────

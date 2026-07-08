@@ -1161,6 +1161,8 @@
     setTimeout(function(){ var el = document.getElementById('email'); if (el) el.focus(); }, 60);
   }
   function closeModal() {
+    // central close → catches every path (✕, «Готово», backdrop tap, ESC key)
+    if (modal.classList.contains('open') && window.track) track('modal_close');
     modal.classList.remove('open');
     document.body.style.overflow = '';
     if (window._modalReturn && window._modalReturn.focus) window._modalReturn.focus({ preventScroll: true });
@@ -1545,11 +1547,29 @@
       });
     }
 
+    // Catch-all: EVERY interactive tap → ui_click {label, area}. Together with
+    // the semantic events (open_signup, generate_lead, app_like_demo,
+    // intro_dismiss, view_how_it_works) no important action goes unseen.
+    var CLICK_SEL = 'a[href], button, [role="button"], input[type="submit"], input[type="button"], .pill-city, .brand';
+    function clickArea(el) {
+      if (el.closest('.modal')) return 'modal';
+      if (el.closest('.intro-pop')) return 'phone_intro';
+      if (el.closest('.match-sheet')) return 'phone_match';
+      if (el.closest('.ip3d-scene')) return 'phone';
+      if (el.closest('nav')) return 'nav';
+      if (el.closest('.hero-actions')) return 'hero';
+      if (el.closest('.cta-box')) return 'cta';
+      if (el.closest('section.adv')) return 'advantages';
+      if (el.closest('footer')) return 'footer';
+      return 'other';
+    }
     document.addEventListener('click', function (e) {
-      var el = e.target.closest && e.target.closest('a, button, .pcard, .app-cta, .pill-city, .brand');
+      var el = e.target.closest && e.target.closest(CLICK_SEL);
       if (!el) return;
-      var label = el.getAttribute('aria-label') || (el.getAttribute('data-name')) || (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40) || el.className || el.tagName.toLowerCase();
-      track('ui_click', { label: label });
+      var label = el.getAttribute('data-track') || el.getAttribute('aria-label') || el.getAttribute('data-name')
+                || (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40)
+                || String(el.className || '').split(' ')[0] || el.tagName.toLowerCase();
+      track('ui_click', { label: label, area: clickArea(el) });
     }, true);
 
     function sendExit() {

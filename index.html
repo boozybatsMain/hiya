@@ -726,10 +726,17 @@
   .overlay.open {
     opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity .28s ease;
+  }
+  /* блюр — на псевдоэлементе-подложке, а НЕ на самом .overlay: на iOS
+     повторное включение backdrop-filter на родителе перестаёт отрисовывать
+     его детей (модалка «исчезала» при втором открытии). Подложка создаётся
+     заново на каждое открытие, и худший сценарий — просто нет блюра. */
+  .overlay.open::before {
+    content: ""; position: absolute; inset: 0;
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   }
   .modal {
-    position: relative; width: 100%; max-width: 460px; text-align: center; overflow: hidden;
+    position: relative; z-index: 1; width: 100%; max-width: 460px; text-align: center; overflow: hidden;
     background: linear-gradient(180deg, #241c11 0%, var(--surface-2) 34%, var(--bg-2) 100%);
     border: 1px solid transparent; border-radius: var(--r-xl); padding: 56px 46px 42px;
     box-shadow: 0 50px 120px rgba(0,0,0,0.7), 0 0 90px rgba(207,160,85,0.12);
@@ -743,7 +750,9 @@
             mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
   }
-  .overlay.open .modal { transform: none; }
+  /* translateZ(0) вместо none: держит модалку на собственном композитном
+     слое — страховка от того же iOS-бага с пропаданием содержимого */
+  .overlay.open .modal { transform: translateZ(0); }
   .m-glow {
     position: absolute; top: -34%; left: 50%; transform: translateX(-50%); width: 480px; height: 380px; pointer-events: none;
     background: radial-gradient(closest-side, rgba(231,198,145,0.17), transparent 70%);

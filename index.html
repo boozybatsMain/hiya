@@ -803,6 +803,21 @@
   .modal input::placeholder { color: #9a907e; opacity: 1; }
   .modal input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231,198,145,0.28); }
   .modal .btn-gold { width: 100%; font-size: 16px; padding: 17px 0; }
+  .btn-google {
+    display: inline-flex; align-items: center; justify-content: center; gap: 11px;
+    width: 100%; font-size: 15.5px; font-weight: 600; color: #1f1f1f;
+    background: #fff; padding: 15px 0; border-radius: 100px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  .btn-google:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.9); }
+  .btn-google:active { transform: translateY(0); }
+  .btn-google:disabled { opacity: 0.6; pointer-events: none; }
+  .btn-google svg { flex: none; }
+  .m-or {
+    display: flex; align-items: center; gap: 12px; margin: 16px 0;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .m-or::before, .m-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
   .modal .ok { display: none; } .modal.done .form { display: none; } .modal.done .ok { display: block; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1202,7 +1217,13 @@
       <div class="m-ic"><span class="m-ic-halo" aria-hidden="true"></span><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="4"/><path d="m22 7-10 6L2 7"/></svg></div>
       <div class="m-orn" aria-hidden="true"><i></i><b>◆</b><i></i></div>
       <h3>Получить приглашение</h3>
-      <p>Оставьте почту. Пригласим вас одним из первых.</p>
+      <p>Войдите через Google или оставьте почту — пригласим вас одним из первых.</p>
+      <button class="btn btn-google" id="googleBtn" type="button" onclick="googleSignIn()">
+        <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
+        <span>Продолжить с Google</span>
+      </button>
+      <div id="gErr" role="alert" style="display:none;color:#e8a48a;font-size:13.5px;margin:10px 0 0">Не получилось войти через Google — оставьте почту ниже</div>
+      <div class="m-or" aria-hidden="true">или</div>
       <input type="email" name="email" placeholder="lover@icloud.com" id="email" autocomplete="email" inputmode="email" onkeydown="if(event.key==='Enter'){event.preventDefault();submitEmail();}">
       <input type="text" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Leave this empty" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0">
       <div id="emailErr" role="alert" style="display:none;color:#e8a48a;font-size:13.5px;margin:-4px 0 12px">Введите корректный e-mail</div>
@@ -1228,10 +1249,14 @@
     modalBox.classList.remove('done');
     var sb = document.getElementById('submitBtn');
     if (sb) { sb.disabled = false; sb.style.opacity = ''; sb.style.pointerEvents = ''; }
+    var gb = document.getElementById('googleBtn'); if (gb) gb.disabled = false;
     var er = document.getElementById('emailErr'); if (er) er.style.display = 'none';
+    var ge = document.getElementById('gErr'); if (ge) ge.style.display = 'none';
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
-    setTimeout(function(){ var el = document.getElementById('email'); if (el) el.focus(); }, 60);
+    // фокус на Google-кнопку, а не на поле почты: авто-фокус инпута открывал
+    // бы клавиатуру на мобиле и прятал главный CTA
+    setTimeout(function(){ var el = document.getElementById('googleBtn') || document.getElementById('email'); if (el) el.focus({ preventScroll: true }); }, 60);
   }
   function closeModal() {
     // central close → catches every path (✕, «Готово», backdrop tap, ESC key)
@@ -1247,6 +1272,40 @@
   function showDone() {
     modalBox.classList.add('done');
     setTimeout(function(){ var b = modalBox.querySelector('.ok .btn-gold'); if (b) b.focus(); }, 40);
+  }
+
+  // единая отправка заявки: и из формы с почтой, и после входа через Google
+  function sendLead(email, method) {
+    var sink = document.getElementById('fs_sink');
+    if (!sink) {
+      sink = document.createElement('iframe');
+      sink.name = 'fs_sink'; sink.id = 'fs_sink'; sink.style.display = 'none';
+      document.body.appendChild(sink);
+    }
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = 'https://formsubmit.co/' + FORM_ENDPOINT;
+    f.target = 'fs_sink';
+    f.style.display = 'none';
+    function field(n, v) { var i = document.createElement('input'); i.type = 'hidden'; i.name = n; i.value = v; f.appendChild(i); }
+    field('email', email);
+    field('method', method);
+    field('_subject', 'hiya — новая заявка на ранний доступ');
+    field('_template', 'table');
+    field('_captcha', 'false');
+    document.body.appendChild(f);
+    f.submit();
+    setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 4000);
+
+    if (window.track) track('generate_lead', { method: method });
+
+    // count this signup toward the shared waitlist number
+    if (window.hiyaBump) window.hiyaBump();
+    var okText = document.getElementById('okText');
+    if (okText && window.hiyaWaitTotal) {
+      okText.innerHTML = 'Теперь в списке уже <b>' + window.hiyaWaitTotal() + '</b>. Напишем, как только запустимся в Алматы.';
+    }
+    showDone();
   }
 
   function submitEmail() {
@@ -1265,37 +1324,73 @@
     if (hp && hp.value) { showDone(); return; } // silent bot trap
 
     if (btn) { btn.disabled = true; btn.style.opacity = '0.65'; btn.style.pointerEvents = 'none'; }
-
-    var sink = document.getElementById('fs_sink');
-    if (!sink) {
-      sink = document.createElement('iframe');
-      sink.name = 'fs_sink'; sink.id = 'fs_sink'; sink.style.display = 'none';
-      document.body.appendChild(sink);
-    }
-    var f = document.createElement('form');
-    f.method = 'POST';
-    f.action = 'https://formsubmit.co/' + FORM_ENDPOINT;
-    f.target = 'fs_sink';
-    f.style.display = 'none';
-    function field(n, v) { var i = document.createElement('input'); i.type = 'hidden'; i.name = n; i.value = v; f.appendChild(i); }
-    field('email', email);
-    field('_subject', 'hiya — новая заявка на ранний доступ');
-    field('_template', 'table');
-    field('_captcha', 'false');
-    document.body.appendChild(f);
-    f.submit();
-    setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 4000);
-
-    if (window.track) track('generate_lead', { method: 'early_access' });
-
-    // count this signup toward the shared waitlist number
-    if (window.hiyaBump) window.hiyaBump();
-    var okText = document.getElementById('okText');
-    if (okText && window.hiyaWaitTotal) {
-      okText.innerHTML = 'Теперь в списке уже <b>' + window.hiyaWaitTotal() + '</b>. Напишем, как только запустимся в Алматы.';
-    }
-    showDone();
+    sendLead(email, 'early_access');
   }
+
+  // ── Google-авторизация → почта из аккаунта уходит той же заявкой ───
+  // Требование: в Firebase Console → Authentication → Sign-in method должен
+  // быть включён провайдер Google, а домен сайта добавлен в Authorized domains.
+  function hiyaAuthMods() {
+    return Promise.all([
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')
+    ]).then(function (mods) {
+      var appMod = mods[0], authMod = mods[1];
+      var app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(window.FIREBASE_CONFIG);
+      var auth = authMod.getAuth(app);
+      auth.languageCode = 'ru';
+      return { authMod: authMod, auth: auth };
+    });
+  }
+
+  function googleSignIn() {
+    var gb = document.getElementById('googleBtn');
+    var gErr = document.getElementById('gErr');
+    if (gErr) gErr.style.display = 'none';
+    if (gb) gb.disabled = true;
+    if (window.track) track('google_signin_start');
+    hiyaAuthMods().then(function (m) {
+      var provider = new m.authMod.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      return m.authMod.signInWithPopup(m.auth, provider).then(function (res) {
+        var email = res && res.user && res.user.email;
+        if (!email) throw new Error('no-email');
+        sendLead(email, 'google');
+      }).catch(function (e) {
+        // Safari и ко: попап заблокирован → полный redirect-флоу
+        if (e && e.code === 'auth/popup-blocked') {
+          try { sessionStorage.setItem('hiya_gauth', '1'); } catch (err) {}
+          return m.authMod.signInWithRedirect(m.auth, provider);
+        }
+        throw e;
+      });
+    }).catch(function (e) {
+      var code = (e && e.code) || '';
+      // закрыл окно сам — не ошибка, молчим
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        if (gErr) gErr.style.display = 'block';
+        if (window.track) track('google_signin_error', { code: code || 'unknown' });
+      }
+    }).then(function () {
+      if (gb && !modalBox.classList.contains('done')) gb.disabled = false;
+    });
+  }
+
+  // возврат после signInWithRedirect: забираем результат и завершаем заявку
+  (function () {
+    var pending = false;
+    try { pending = sessionStorage.getItem('hiya_gauth') === '1'; } catch (e) {}
+    if (!pending) return;
+    try { sessionStorage.removeItem('hiya_gauth'); } catch (e) {}
+    hiyaAuthMods().then(function (m) {
+      return m.authMod.getRedirectResult(m.auth);
+    }).then(function (res) {
+      var email = res && res.user && res.user.email;
+      if (!email) return;
+      openModal('google_redirect');
+      sendLead(email, 'google');
+    }).catch(function () {});
+  })();
   modal.addEventListener('keydown', function(e){
     if (e.key !== 'Tab') return;
     var f = Array.prototype.slice.call(modalBox.querySelectorAll('button, input')).filter(function(el){ return el.offsetParent !== null; });
@@ -1457,7 +1552,8 @@
         try {
           var appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
           var dbMod  = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js');
-          var app = appMod.initializeApp(cfg);
+          // app мог уже поднять авторизационный код (возврат с Google-редиректа)
+          var app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(cfg);
           var db = dbMod.getDatabase(app);
           var countRef = dbMod.ref(db, 'waitlist/signups');
           dbMod.onValue(countRef, function (snap) {

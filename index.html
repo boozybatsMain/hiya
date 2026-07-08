@@ -190,7 +190,8 @@
   /* ── Hero / first screen ─────────────────────────────── */
   .hero {
     position: relative; z-index: 1;
-    min-height: 100svh;
+    min-height: 100vh;   /* фолбэк для старых браузеров без dvh */
+    min-height: 100dvh;  /* всегда во всю ВИДИМУЮ высоту: dvh следит за панелями браузера, поэтому снизу никогда не выглядывает следующий блок */
     padding-top: 96px; padding-bottom: 40px;
     display: grid; grid-template-columns: 1.02fr 0.98fr; align-items: center; gap: 56px;
     grid-template-areas: "head phone" "count phone" "cta phone";
@@ -505,7 +506,7 @@
     background: rgba(18,13,8,0.62); border: 1px solid rgba(244,226,188,0.4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   }
 
-  /* in-phone intro: «18 человек рядом» + режим знакомства.
+  /* in-phone intro: «9 человек рядом» + режим знакомства.
      Фото за попапом остаются слегка видимыми сквозь затемнение. */
   .intro-pop {
     /* --pu: масштаб попапа; на мобиле крупнее самого телефона, чтобы был заметен */
@@ -565,7 +566,7 @@
     pointer-events: none; white-space: nowrap; text-align: center;
   }
   .vis-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  /* «Вы стали видимы» — главное, «18 человек рядом» — вторым планом */
+  /* «Вы стали видимы» — главное, «9 человек рядом» — вторым планом */
   .vt-1 { display: inline-flex; align-items: center; gap: calc(5 * var(--u)); font-size: calc(14 * var(--u)); font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
   .vt-1 i { width: calc(7 * var(--u)); height: calc(7 * var(--u)); border-radius: 50%; background: var(--live); box-shadow: 0 0 calc(7 * var(--u)) rgba(99,212,147,0.9); }
   .vt-2 {
@@ -893,8 +894,15 @@
        влезть в 100svh (видимая зона НАД панелями Safari). Всё, кроме
        телефона, занимает ~335px — телефон забирает остаток и пропорционально
        скейлится (--u), поэтому аккуратен при любом размере */
-    .ip3d-scene { --ip3d-w: clamp(132px, min(calc((100svh - 361px) / 2.05), 60vw), 236px); }
-    .hero { gap: 10px; padding-top: 48px; padding-bottom: 26px; min-height: 0; }
+    .ip3d-scene { --ip3d-w: clamp(132px, min(calc((100svh - 372px) / 2.05), 60vw), 236px); }
+    /* Высоту первого экрана держит min-height:100dvh из базового правила, а
+       align-content:center центрирует контент: если телефон вышел чуть меньше
+       вьюпорта, свободное место распределяется поровну сверху/снизу — следующий
+       блок НЕ выглядывает. Телефон при этом посчитан от 100svh (наименьшая
+       высота, с панелями браузера), поэтому контент всегда влезает.
+       (Раньше здесь стоял min-height:0 — он схлопывал экран по контенту и
+       оставлял щель снизу; не возвращать.) */
+    .hero { gap: 10px; padding-top: 48px; padding-bottom: 26px; }
     h1 { font-size: clamp(23px, 6.9vw, 28px); line-height: 1.08; margin-bottom: 6px; }
     .lede { font-size: 13.5px; margin-bottom: 0; }
     .waitcount { margin: 0 auto; padding: 11px 14px; gap: 7px; border-radius: 14px; max-width: 400px; }
@@ -1057,7 +1065,7 @@
             <div class="app-title">В этом заведении</div>
             <div class="app-place">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-              «Coffee&nbsp;Room» · 18&nbsp;в&nbsp;этом&nbsp;заведении
+              «Coffee&nbsp;Room» · 9&nbsp;в&nbsp;этом&nbsp;заведении
             </div>
 
             <div class="app-feed">
@@ -1102,7 +1110,7 @@
               <div class="feed-fade" aria-hidden="true"></div>
               <div class="vis-toast" id="visToast">
                 <span class="vt-1"><i></i> Вы стали видимы</span>
-                <span class="vt-2">18 человек в этом заведении</span>
+                <span class="vt-2">9 человек в этом заведении</span>
               </div>
             </div>
 
@@ -1119,7 +1127,7 @@
             <div class="intro-pop open" id="introPop">
               <div class="ipop-card">
                 <div class="ipop-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-                <div class="ipop-title"><b class="ipop-hl">18 человек</b> в этом заведении открыты к&nbsp;знакомству</div>
+                <div class="ipop-title"><b class="ipop-hl">9 человек</b> в этом заведении открыты к&nbsp;знакомству</div>
                 <button class="ipop-btn" id="introBtn" type="button"><span>Хочу познакомиться!</span></button>
               </div>
             </div>
@@ -1219,7 +1227,7 @@
     <div class="form">
       <div class="m-ic"><span class="m-ic-halo" aria-hidden="true"></span><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="4"/><path d="m22 7-10 6L2 7"/></svg></div>
       <div class="m-orn" aria-hidden="true"><i></i><b>◆</b><i></i></div>
-      <h3>Получить приглашение</h3>
+      <h3>Запросить приглашение</h3>
       <p>Войдите через Google или оставьте почту — пригласим вас одним из первых.</p>
       <button class="btn btn-google" id="googleBtn" type="button" onclick="googleSignIn()">
         <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
@@ -1438,28 +1446,13 @@
     }, 5000);
   })();
 
-  // ── Первый экран на мобиле = ровно высота вьюпорта: телефон добирает
-  //    всё свободное место (меряем фактическую высоту остального контента)
-  (function () {
-    function fitHero() {
-      if (window.innerWidth > 560) return;
-      var hero = document.querySelector('.hero');
-      var scene = document.querySelector('.ip3d-scene');
-      if (!hero || !scene) return;
-      var avail = document.documentElement.clientHeight;
-      var fixed = hero.offsetHeight - scene.offsetHeight; // всё, кроме телефона
-      var h = avail - fixed - 2;
-      var w = Math.max(132, Math.min(h / 2.05, window.innerWidth * 0.64, 272));
-      scene.style.setProperty('--ip3d-w', w.toFixed(1) + 'px');
-    }
-    var lastW = window.innerWidth;
-    fitHero();
-    window.addEventListener('resize', function () {
-      // перезамер только при смене ширины (сворачивание URL-бара не считаем)
-      if (window.innerWidth !== lastW) { lastW = window.innerWidth; fitHero(); }
-    }, { passive: true });
-    window.addEventListener('orientationchange', function () { setTimeout(fitHero, 250); });
-  })();
+  // ── Первый экран = во всю высоту вьюпорта — теперь это делает ТОЛЬКО CSS.
+  //    .hero { min-height: 100dvh } всегда тянется на всю ВИДИМУЮ высоту (dvh
+  //    сам следит за панелями браузера), align-content:center центрирует
+  //    контент, а ширина телефона считается из 100svh в CSS-clamp (.ip3d-scene).
+  //    Прежнюю JS-подгонку убрали намеренно: она мерила clientHeight,
+  //    конфликтовала с CSS и НЕ реагировала на сворачивание URL-бара — из-за
+  //    чего снизу выглядывал следующий блок. Не возвращать JS-ресайз сюда.
 
   // ── In-app match demo ────────────────────────────────────────────
   var pushTimers = [];

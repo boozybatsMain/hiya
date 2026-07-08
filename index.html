@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}.intro-pop{display:none !important}.ip3d-screen.intro-wait .pcard{opacity:1 !important}</style></noscript>
 <!-- ── Аналитика: Google Analytics 4 ────────────────────────────────
      Вставь свой Measurement ID (вида G-XXXXXXXXXX) из GA4 в GA_ID ниже.
      Пока стоит заглушка — аналитика спит и ничего лишнего не грузит.   -->
@@ -236,7 +236,8 @@
   }
   .wc-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 rgba(99,212,147,0.6); animation: wc-pulse 2s infinite; }
   @keyframes wc-pulse { 0%{box-shadow:0 0 0 0 rgba(99,212,147,0.55)} 70%{box-shadow:0 0 0 8px rgba(99,212,147,0)} 100%{box-shadow:0 0 0 0 rgba(99,212,147,0)} }
-  .wc-headline { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 9px; }
+  .wc-headline { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .wc-pre { font-size: 17px; font-weight: 600; color: var(--ink-2); }
   .wc-num {
     font-size: 40px; font-weight: 900; letter-spacing: -0.03em; line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -261,8 +262,10 @@
   .wc-label { position: relative; z-index: 1; font-size: 14.5px; color: var(--ink-2); font-weight: 500; }
   .wc-label b { color: var(--ink); font-weight: 700; }
 
-  .hero-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .hero-actions { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; margin-top: 6px; }
   .hero-actions .btn-gold { font-size: 16px; padding: 17px 36px; }
+  .cta-note { position: relative; font-size: 12.5px; font-weight: 500; color: var(--ink-3); text-align: center; }
+  .cta-box .cta-note { margin-top: 12px; }
 
   /* ── Realistic 3D iPhone ────────── */
   .stage { position: relative; z-index: 2; display: flex; justify-content: center; max-width: 100%; }
@@ -489,6 +492,60 @@
     background: rgba(18,13,8,0.62); border: 1px solid rgba(244,226,188,0.4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   }
 
+  /* in-phone intro: «7 человек рядом» + режим знакомства */
+  .ip3d-screen.intro-wait .pcard { opacity: 0; }
+  .cards-in .pcard { animation: card-in .55s cubic-bezier(.2,.8,.2,1) both; }
+  .cards-in .pcard:nth-child(2) { animation-delay: .07s; }
+  .cards-in .pcard:nth-child(3) { animation-delay: .14s; }
+  .cards-in .pcard:nth-child(4) { animation-delay: .21s; }
+  /* страховка: через секунду после дисмисса карточки видимы безусловно */
+  .app-feed.cards-done .pcard { animation: none !important; opacity: 1 !important; transform: none !important; }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(14px) scale(.94); }
+    to   { opacity: 1; transform: none; }
+  }
+  .intro-pop {
+    position: absolute; inset: 0; z-index: 42; display: flex; align-items: center; justify-content: center;
+    padding: calc(18 * var(--u)); background: rgba(6,4,2,0.58);
+    opacity: 0; pointer-events: none; transition: opacity .35s ease; border-radius: var(--ip3d-rin);
+  }
+  .intro-pop.open { opacity: 1; pointer-events: auto; }
+  .ipop-card {
+    width: 100%; max-width: calc(238 * var(--u)); text-align: center;
+    padding: calc(18 * var(--u)) calc(15 * var(--u)) calc(14 * var(--u)); border-radius: calc(20 * var(--u));
+    background: linear-gradient(180deg, #221a12 0%, #131009 100%); border: 1px solid var(--line-2);
+    box-shadow: 0 calc(16 * var(--u)) calc(40 * var(--u)) rgba(0,0,0,0.55), inset 0 1px 0 rgba(244,226,188,0.14);
+    animation: ipop-in .55s cubic-bezier(.2,1.4,.4,1) both;
+  }
+  @keyframes ipop-in { from { opacity: 0; transform: translateY(calc(16 * var(--u))) scale(.85); } }
+  .ipop-ic {
+    width: calc(44 * var(--u)); height: calc(44 * var(--u)); margin: 0 auto calc(10 * var(--u));
+    display: grid; place-items: center; border-radius: 50%;
+    background: var(--gold-grad); color: #47320e;
+    box-shadow: 0 calc(8 * var(--u)) calc(20 * var(--u)) rgba(207,160,85,0.4), inset 0 1px 0 rgba(255,255,255,0.45);
+  }
+  .ipop-ic svg { width: calc(22 * var(--u)); height: calc(22 * var(--u)); }
+  .ipop-title { font-size: calc(15 * var(--u)); font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; color: var(--ink); }
+  .ipop-btn {
+    position: relative; overflow: hidden; font-family: inherit; cursor: pointer; border: none;
+    width: 100%; margin-top: calc(13 * var(--u));
+    font-size: calc(13 * var(--u)); font-weight: 700; color: #221805;
+    padding: calc(11 * var(--u)) calc(12 * var(--u)); border-radius: 100px; background: var(--gold-grad);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+    animation: ipop-pulse 1.7s ease-in-out infinite;
+  }
+  .ipop-btn > span { position: relative; z-index: 1; }
+  .ipop-btn::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.6) 50%, transparent 62%);
+    transform: translateX(-130%); animation: ipop-shine 2.3s ease-in-out infinite;
+  }
+  @keyframes ipop-pulse {
+    0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 0 0 0 rgba(231,198,145,0.55); }
+    50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 0 0 calc(9 * var(--u)) rgba(231,198,145,0); }
+  }
+  @keyframes ipop-shine { 0%, 45% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+
   /* in-phone match sheet */
   .match-sheet {
     position: absolute; inset: 0; z-index: 40; display: flex; align-items: flex-end; justify-content: center;
@@ -646,6 +703,8 @@
     .btn, .pcard, .step, .b-card, .app-cta, .modal, .overlay, .grain { transition: none !important; }
     .btn-gold:hover, .btn-ghost:active, .step:hover, .b-card:hover { transform: none; }
     .wc-halo, .wc-live i, .wc-bar > span::after, .pcard-like, .ms-heart { animation: none !important; }
+    .ipop-btn, .ipop-btn::after, .ipop-card, .cards-in .pcard { animation: none !important; }
+    .cards-in .pcard { opacity: 1; }
     [data-speed] { transform: none !important; }
   }
 
@@ -657,6 +716,7 @@
       grid-template-areas: "head" "phone" "count" "cta"; justify-items: center; text-align: center;
     }
     .hero-head, .waitcount, .hero-actions { width: 100%; max-width: 460px; }
+    .hero-actions { align-items: center; }
     .lede { margin-left: auto; margin-right: auto; }
     .waitcount { margin-left: auto; margin-right: auto; }
     .ambient { inset: -40px 0; }
@@ -699,13 +759,13 @@
        влезть в 100svh (видимая зона НАД панелями Safari). Всё, кроме
        телефона, занимает ~335px — телефон забирает остаток и пропорционально
        скейлится (--u), поэтому аккуратен при любом размере */
-    .ip3d-scene { --ip3d-w: clamp(132px, min(calc((100svh - 335px) / 2.05), 60vw), 236px); }
+    .ip3d-scene { --ip3d-w: clamp(132px, min(calc((100svh - 361px) / 2.05), 60vw), 236px); }
     .hero { gap: 10px; padding-top: 48px; padding-bottom: 26px; min-height: 0; }
     h1 { font-size: clamp(23px, 6.9vw, 28px); line-height: 1.08; margin-bottom: 6px; }
     .lede { font-size: 13.5px; margin-bottom: 0; }
     .waitcount { margin: 0 auto; padding: 11px 14px; gap: 7px; border-radius: 14px; max-width: 400px; }
     .wc-num { font-size: 23px; }
-    .wc-of { font-size: 12.5px; }
+    .wc-of, .wc-pre { font-size: 12.5px; }
     .wc-live { font-size: 9px; letter-spacing: 0.03em; }
     .wc-live i { width: 6px; height: 6px; }
     .wc-bar { height: 7px; }
@@ -761,6 +821,7 @@
     .wc-num { font-size: 20px; }
     .wc-label { font-size: 11px; }
     .hero-actions .btn-gold { padding: 11px 18px; font-size: 13.5px; }
+    .hero-actions .cta-note { display: none; }
     .ip3d-scene { --ip3d-w: clamp(118px, min(calc((100svh - 278px) / 2.05), 60vw), 236px); }
   }
 </style>
@@ -801,7 +862,7 @@
 
   <div class="hero-head">
     <h1>Не гадай, можно ли<br><span class="em">подойти познакомиться</span></h1>
-    <p class="lede">Узнай, кто рядом сейчас открыт к знакомству.</p>
+    <p class="lede">Только люди, которые сами готовы познакомиться.</p>
   </div>
 
   <div class="waitcount" id="waitcount" role="status" aria-live="polite">
@@ -810,15 +871,17 @@
       <span class="wc-live"><i></i> в реальном времени</span>
     </div>
     <div class="wc-headline">
+      <span class="wc-pre">Осталось</span>
       <span class="wc-num" id="wcNum">···</span>
-      <span class="wc-of"><b id="wcNoun">человек</b> из 300</span>
+      <span class="wc-of"><b id="wcNoun">мест</b> из 300</span>
     </div>
     <div class="wc-bar"><span id="wcFill"></span></div>
-    <div class="wc-label">уже ждут запуск <b>hiya</b> в Алматы</div>
+    <div class="wc-label">Первый запуск — только в <b>Алматы</b></div>
   </div>
 
   <div class="hero-actions">
     <button class="btn btn-gold" onclick="openModal('hero')"><span>Получить ранний доступ</span></button>
+    <div class="cta-note">Получишь приглашение в день открытия</div>
   </div>
 
   <div class="stage">
@@ -839,7 +902,7 @@
         <div class="ip3d-rail ip3d-rail-top" aria-hidden="true"></div>
         <div class="ip3d-rail ip3d-rail-bottom" aria-hidden="true"></div>
         <div class="ip3d-front">
-          <div class="ip3d-screen">
+          <div class="ip3d-screen intro-wait">
             <div class="ip3d-earpiece" aria-hidden="true"></div>
             <div class="ip3d-island" aria-hidden="true"></div>
             <div class="statusbar">
@@ -907,6 +970,14 @@
             </div>
 
             <div class="home-ind" aria-hidden="true"></div>
+
+            <div class="intro-pop open" id="introPop">
+              <div class="ipop-card">
+                <div class="ipop-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                <div class="ipop-title">7 человек рядом готовы познакомиться</div>
+                <button class="ipop-btn" id="introBtn" type="button"><span>Перейти в режим знакомства</span></button>
+              </div>
+            </div>
 
             <div class="match-sheet" id="matchSheet" onclick="if(event.target===this)hideMatch()">
               <div class="ms-card" role="dialog" aria-label="Взаимная симпатия">
@@ -981,6 +1052,7 @@
     <h2>Попробовать первым</h2>
     <p>Скоро в Алматы.</p>
     <button class="btn btn-gold" onclick="openModal('cta_bottom')"><span>Получить ранний доступ</span></button>
+    <div class="cta-note">Получишь приглашение в день открытия</div>
   </div>
 </section>
 
@@ -1099,6 +1171,27 @@
   });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { if (document.getElementById('matchSheet').classList.contains('open')) { hideMatch(); return; } if (modal.classList.contains('open')) closeModal(); } });
 
+  // ── In-app intro: «режим знакомства», авто-скрытие через 2 сек ────
+  (function () {
+    var pop = document.getElementById('introPop');
+    var screen = document.querySelector('.ip3d-screen');
+    var feed = document.querySelector('.app-feed');
+    if (!pop || !screen) return;
+    var done = false;
+    function dismiss(via) {
+      if (done) return; done = true;
+      pop.classList.remove('open');
+      screen.classList.remove('intro-wait');
+      if (feed) feed.classList.add('cards-in');
+      if (window.track) track('intro_dismiss', { via: via });
+      setTimeout(function () { pop.style.display = 'none'; }, 400);
+      setTimeout(function () { if (feed) feed.classList.add('cards-done'); }, 1000);
+    }
+    var b = document.getElementById('introBtn');
+    if (b) b.addEventListener('click', function () { dismiss('button'); });
+    setTimeout(function () { dismiss('auto'); }, 2300);
+  })();
+
   // ── In-app match demo ────────────────────────────────────────────
   function showMatch(card) {
     var g = card.getAttribute('data-gender');
@@ -1142,9 +1235,10 @@
     }
     function render() {
       var total = BASE + signups;
+      var left = Math.max(0, TARGET - total);   // показываем, сколько МЕСТ осталось
       if (numEl) numEl.classList.remove('wait');
-      animateNum(shown, total); shown = total;
-      if (nounEl) nounEl.textContent = ruPlural(total, 'человек', 'человека', 'человек');
+      animateNum(shown, left); shown = left;
+      if (nounEl) nounEl.textContent = ruPlural(left, 'место', 'места', 'мест');
       if (fillEl) fillEl.style.width = Math.max(4, Math.min(100, total / TARGET * 100)).toFixed(1) + '%';
     }
     window.hiyaWaitTotal = function () { return BASE + signups; };

@@ -17,14 +17,20 @@
     var id = window.GA_ID;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function () { dataLayer.push(arguments); };
-    // Исключение своего трафика (по устройству, через секретный URL-параметр).
-    // Открыть ?mytraffic=off — выключить свои заходы; ?mytraffic=on — включить обратно.
+    // Исключение своего трафика (по устройству/браузеру, через секретный URL-параметр).
+    //  ?mytraffic=off — выключить свои заходы; =on — включить; =status — показать статус.
     var optedOut = false;
     try {
       var q = new URLSearchParams(location.search);
-      if (q.get('mytraffic') === 'off') localStorage.setItem('hiya_no_ga', '1');
-      if (q.get('mytraffic') === 'on')  localStorage.removeItem('hiya_no_ga');
+      var mt = q.get('mytraffic');
+      if (mt === 'off') localStorage.setItem('hiya_no_ga', '1');
+      if (mt === 'on')  localStorage.removeItem('hiya_no_ga');
       optedOut = localStorage.getItem('hiya_no_ga') === '1';
+      if (mt === 'off') alert('✓ Готово. Заходы с ЭТОГО браузера больше НЕ считаются в аналитике.');
+      else if (mt === 'on') alert('Заходы с этого браузера снова считаются в аналитике.');
+      else if (mt === 'status') alert(optedOut
+        ? 'Статус: ты ИСКЛЮЧЁН ✓ — этот браузер НЕ попадает в аналитику.'
+        : 'Статус: ты УЧИТЫВАЕШЬСЯ — этот браузер идёт в аналитику. Открой ?mytraffic=off, чтобы исключить.');
     } catch (e) {}
     if (optedOut) console.log('[GA] твой трафик ИСКЛЮЧЁН на этом устройстве (hiya_no_ga=1)');
 

@@ -12,12 +12,14 @@
      Вставь свой Measurement ID (вида G-XXXXXXXXXX) из GA4 в GA_ID ниже.
      Пока стоит заглушка — аналитика спит и ничего лишнего не грузит.   -->
 <script>
-  window.GA_ID = "G-XXXXXXXXXX"; /* ← сюда свой ID из Google Analytics 4 */
+  window.GA_ID = "G-ZBFLNG3JNW"; /* Measurement ID из Google Analytics 4 */
   (function () {
     var id = window.GA_ID;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function () { dataLayer.push(arguments); };
-    var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX';
+    var host = location.hostname;
+    var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '';
+    var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX' && !isLocal;
     if (live) {
       var s = document.createElement('script');
       s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
@@ -821,6 +823,72 @@
     }
     window.addEventListener('scroll', update, { passive: true });
     update();
+  })();
+
+  // ── Engagement analytics: scroll depth, click map, time-on-page & exit ──
+  (function () {
+    if (!window.track) return;
+    var start = Date.now();
+    var maxScroll = 0, scrolledOnce = false, exitSent = false, depthHits = {};
+    var order = ['hero', 'how_it_works', 'cta', 'footer'], deepestIdx = 0;
+    function secs() { return Math.round((Date.now() - start) / 1000); }
+
+    function scrollPct() {
+      var top = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      var full = document.documentElement.scrollHeight || document.body.scrollHeight;
+      var denom = Math.max(1, full - (window.innerHeight || document.documentElement.clientHeight));
+      return Math.max(0, Math.min(100, Math.round(top / denom * 100)));
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(function () {
+        ticking = false;
+        var pct = scrollPct();
+        if (pct > maxScroll) maxScroll = pct;
+        if (!scrolledOnce && pct > 2) { scrolledOnce = true; track('scroll_start'); }
+        [25, 50, 75, 90, 100].forEach(function (m) {
+          if (maxScroll >= m && !depthHits[m]) { depthHits[m] = true; track('scroll_depth', { percent: m }); }
+        });
+      });
+    }, { passive: true });
+
+    // which sections were actually reached (куда дошёл)
+    if ('IntersectionObserver' in window) {
+      var seen = {};
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          var name = e.target.getAttribute('data-sec');
+          var idx = order.indexOf(name);
+          if (idx > deepestIdx) deepestIdx = idx;
+          if (!seen[name]) { seen[name] = true; track('section_view', { section: name }); }
+        });
+      }, { threshold: 0.4 });
+      [['how_it_works', document.getElementById('how')],
+       ['cta', document.querySelector('section.cta')],
+       ['footer', document.querySelector('footer')]].forEach(function (s) {
+        if (s[1]) { s[1].setAttribute('data-sec', s[0]); io.observe(s[1]); }
+      });
+    }
+
+    // where they tapped (куда тыкал)
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest && e.target.closest('a, button, .like, .app-cta, .pill-city, .brand');
+      if (!el) return;
+      var label = el.getAttribute('aria-label') || (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40) || el.className || el.tagName.toLowerCase();
+      track('ui_click', { label: label });
+    }, true);
+
+    // time on page + how far they got before leaving (сколько был и где ушёл)
+    function sendExit() {
+      if (exitSent) return; exitSent = true;
+      track('page_exit', { engagement_seconds: secs(), max_scroll: maxScroll, last_section: order[deepestIdx] });
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') sendExit();
+    });
+    window.addEventListener('pagehide', sendExit);
   })();
 </script>
 </body>

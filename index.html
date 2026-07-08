@@ -511,19 +511,22 @@
   }
   .ipop-ic svg { width: calc(22 * var(--pu)); height: calc(22 * var(--pu)); }
   .ipop-title { font-size: calc(16 * var(--pu)); font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; color: var(--ink); }
-  /* призрачный палец-подсказка: один «тап» по кнопке */
+  /* призрачный палец-подсказка: прилетает ИЗ-ЗА рамки телефона и «тапает»
+     по кнопке (живёт в .ip3d-scene, которая ничего не обрезает) */
   .tap-hint {
-    position: absolute; left: 56%; bottom: calc(-6 * var(--pu)); z-index: 5; pointer-events: none;
-    font-size: calc(27 * var(--pu)); line-height: 1; opacity: 0;
-    filter: drop-shadow(0 calc(3 * var(--pu)) calc(7 * var(--pu)) rgba(0,0,0,0.55));
+    position: absolute; left: 49%; top: 58%; z-index: 12; pointer-events: none;
+    font-size: calc(38 * var(--u)); line-height: 1; opacity: 0;
+    filter: drop-shadow(0 calc(3 * var(--u)) calc(8 * var(--u)) rgba(0,0,0,0.55));
+    will-change: transform, opacity;
   }
-  .tap-hint.play { animation: tap-once 2s cubic-bezier(.3,.7,.3,1) both; }
+  .tap-hint.play { animation: tap-once 2.2s cubic-bezier(.3,.7,.3,1) both; }
   @keyframes tap-once {
-    0%   { opacity: 0; transform: translate(calc(12 * var(--pu)), calc(18 * var(--pu))) scale(1); }
-    30%  { opacity: .85; transform: translate(0, 0) scale(1); }
-    44%  { transform: translate(0, calc(-2 * var(--pu))) scale(.78); }
-    58%  { opacity: .85; transform: translate(0, 0) scale(1); }
-    100% { opacity: 0; transform: translate(0, calc(-6 * var(--pu))) scale(1); }
+    0%   { opacity: 0;   transform: translate(calc(200 * var(--u)), calc(230 * var(--u))) rotate(14deg); }
+    12%  { opacity: .85; }
+    40%  { opacity: .9;  transform: translate(0, 0) rotate(0deg); }
+    52%  { transform: translate(calc(-2 * var(--u)), calc(-7 * var(--u))) scale(.78); }
+    66%  { opacity: .9;  transform: translate(0, 0) scale(1); }
+    100% { opacity: 0;   transform: translate(calc(60 * var(--u)), calc(90 * var(--u))) rotate(8deg); }
   }
   /* тост «Вы стали видимы» после нажатия */
   .vis-toast {
@@ -904,6 +907,7 @@
       <div class="ip3d-bokeh" aria-hidden="true"></div>
       <div class="ip3d-reflect" aria-hidden="true"></div>
       <div class="ip3d-shadow" aria-hidden="true"></div>
+      <div class="tap-hint" id="tapHint" aria-hidden="true">👆</div>
       <div class="ip3d-stage3d">
         <div class="ip3d-back" aria-hidden="true"></div>
         <div class="ip3d-rail ip3d-rail-left" aria-hidden="true">
@@ -995,7 +999,6 @@
                 <div class="ipop-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
                 <div class="ipop-title">Coffee&nbsp;Room</div>
                 <button class="ipop-btn" id="introBtn" type="button"><span>Я сейчас здесь</span></button>
-                <div class="tap-hint" id="tapHint" aria-hidden="true">👆</div>
               </div>
             </div>
 
@@ -1207,19 +1210,45 @@
     }
     var b = document.getElementById('introBtn');
     if (b) b.addEventListener('click', function () { dismiss('button'); });
-    // призрачный палец: через 2с ОДИН раз «тапает» по кнопке, если ещё не нажали
-    setTimeout(function () {
-      if (done) return;
-      var h = document.getElementById('tapHint');
-      if (h) h.classList.add('play');
+    // призрачный палец: первый раз через 2с, дальше раз в 5с, пока не нажали.
+    // Попап сам НЕ скрывается — только по кнопке.
+    var hint = document.getElementById('tapHint');
+    function playHint() {
+      if (done || !hint) return;
+      hint.classList.remove('play'); void hint.offsetWidth; // перезапуск анимации
+      hint.classList.add('play');
       setTimeout(function () {
         if (!done && b) { b.style.transform = 'scale(.94)'; setTimeout(function () { b.style.transform = ''; }, 180); }
-      }, 880);
-    }, 2000);
-    var t0 = Date.now(), scrolled = false;
-    function maybeAuto() { if (scrolled && Date.now() - t0 >= 3000) dismiss('scroll'); }
-    window.addEventListener('scroll', function () { scrolled = true; maybeAuto(); }, { passive: true });
-    setTimeout(maybeAuto, 3050);
+      }, 1150);
+    }
+    setTimeout(playHint, 2000);
+    var hintTimer = setInterval(function () {
+      if (done) { clearInterval(hintTimer); return; }
+      playHint();
+    }, 5000);
+  })();
+
+  // ── Первый экран на мобиле = ровно высота вьюпорта: телефон добирает
+  //    всё свободное место (меряем фактическую высоту остального контента)
+  (function () {
+    function fitHero() {
+      if (window.innerWidth > 560) return;
+      var hero = document.querySelector('.hero');
+      var scene = document.querySelector('.ip3d-scene');
+      if (!hero || !scene) return;
+      var avail = document.documentElement.clientHeight;
+      var fixed = hero.offsetHeight - scene.offsetHeight; // всё, кроме телефона
+      var h = avail - fixed - 2;
+      var w = Math.max(132, Math.min(h / 2.05, window.innerWidth * 0.64, 272));
+      scene.style.setProperty('--ip3d-w', w.toFixed(1) + 'px');
+    }
+    var lastW = window.innerWidth;
+    fitHero();
+    window.addEventListener('resize', function () {
+      // перезамер только при смене ширины (сворачивание URL-бара не считаем)
+      if (window.innerWidth !== lastW) { lastW = window.innerWidth; fitHero(); }
+    }, { passive: true });
+    window.addEventListener('orientationchange', function () { setTimeout(fitHero, 250); });
   })();
 
   // ── In-app match demo ────────────────────────────────────────────

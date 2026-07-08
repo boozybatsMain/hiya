@@ -729,10 +729,16 @@
   }
   /* блюр — на псевдоэлементе-подложке, а НЕ на самом .overlay: на iOS
      повторное включение backdrop-filter на родителе перестаёт отрисовывать
-     его детей (модалка «исчезала» при втором открытии). Подложка создаётся
-     заново на каждое открытие, и худший сценарий — просто нет блюра. */
-  .overlay.open::before {
+     его детей (модалка «исчезала» при втором открытии). Худший сценарий
+     теперь — просто нет блюра. Анимируем значение blur(0)→blur(16px), а не
+     появление свойства: так есть плавный транзишен в обе стороны, а в
+     закрытом состоянии оверлей целиком visibility:hidden — слой не рисуется. */
+  .overlay::before {
     content: ""; position: absolute; inset: 0;
+    backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
+    transition: backdrop-filter .28s ease, -webkit-backdrop-filter .28s ease;
+  }
+  .overlay.open::before {
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   }
   .modal {

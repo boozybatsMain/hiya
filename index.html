@@ -17,9 +17,20 @@
     var id = window.GA_ID;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function () { dataLayer.push(arguments); };
+    // Исключение своего трафика (по устройству, через секретный URL-параметр).
+    // Открыть ?mytraffic=off — выключить свои заходы; ?mytraffic=on — включить обратно.
+    var optedOut = false;
+    try {
+      var q = new URLSearchParams(location.search);
+      if (q.get('mytraffic') === 'off') localStorage.setItem('hiya_no_ga', '1');
+      if (q.get('mytraffic') === 'on')  localStorage.removeItem('hiya_no_ga');
+      optedOut = localStorage.getItem('hiya_no_ga') === '1';
+    } catch (e) {}
+    if (optedOut) console.log('[GA] твой трафик ИСКЛЮЧЁН на этом устройстве (hiya_no_ga=1)');
+
     var host = location.hostname;
     var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '';
-    var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX' && !isLocal;
+    var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX' && !isLocal && !optedOut;
     if (live) {
       var s = document.createElement('script');
       s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;

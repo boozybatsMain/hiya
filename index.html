@@ -1310,9 +1310,25 @@
     // призрачный палец: первый раз через 2с, дальше раз в 5с, пока не нажали.
     // Попап сам НЕ скрывается — только по кнопке.
     var hint = document.getElementById('tapHint');
+    // кончик пальца должен «тапать» по центру кнопки: статичные проценты
+    // промахиваются на разных масштабах телефона, поэтому перед каждым
+    // запуском выравниваем позицию по фактическим координатам (2 итерации —
+    // компенсация 3D-проекции сцены)
+    function alignHint() {
+      if (!hint || !b) return;
+      for (var i = 0; i < 2; i++) {
+        var hr = hint.getBoundingClientRect();
+        var br = b.getBoundingClientRect();
+        var dx = (br.left + br.width / 2) - (hr.left + hr.width / 2);
+        var dy = (br.top + br.height / 2) - (hr.top + hr.height * 0.06);
+        hint.style.left = (hint.offsetLeft + dx) + 'px';
+        hint.style.top = (hint.offsetTop + dy) + 'px';
+      }
+    }
     function playHint() {
       if (done || !hint) return;
       hint.classList.remove('play'); void hint.offsetWidth; // перезапуск анимации
+      alignHint();
       hint.classList.add('play');
       setTimeout(function () {
         if (!done && b) { b.style.transform = 'scale(.94)'; setTimeout(function () { b.style.transform = ''; }, 180); }

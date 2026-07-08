@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Google Identity Services: вход через Google для кнопки в модалке.
+     Грузим заранее, чтобы клик открывал попап синхронно (иначе Safari его режет). -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}.intro-pop{display:none !important}</style></noscript>
 <!-- ── Аналитика: Google Analytics 4 ────────────────────────────────
      Вставь свой Measurement ID (вида G-XXXXXXXXXX) из GA4 в GA_ID ниже.
@@ -1327,70 +1330,54 @@
     sendLead(email, 'early_access');
   }
 
-  // ── Google-авторизация → почта из аккаунта уходит той же заявкой ───
-  // Требование: в Firebase Console → Authentication → Sign-in method должен
-  // быть включён провайдер Google, а домен сайта добавлен в Authorized domains.
-  function hiyaAuthMods() {
-    return Promise.all([
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')
-    ]).then(function (mods) {
-      var appMod = mods[0], authMod = mods[1];
-      var app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(window.FIREBASE_CONFIG);
-      var auth = authMod.getAuth(app);
-      auth.languageCode = 'ru';
-      return { authMod: authMod, auth: auth };
-    });
-  }
+  // ── Google-авторизация (Google Identity Services, токен-флоу) ──────
+  // Firebase Auth тут НЕ подходит: authDomain живёт на firebaseapp.com, а сайт
+  // на github.io — Safari/мобильные браузеры с блокировкой сторонних кук молча
+  // теряют результат входа. GIS работает напрямую с кастомной кнопкой и без
+  // сторонних кук. Client ID — «Web client (auto created by Google Service)»
+  // проекта hiya-e8f5c; домен сайта добавлен в его Authorized JavaScript origins.
+  var GOOGLE_CLIENT_ID = '871880499012-25foof7p1of4aivhnr0oguebeq8vsukv.apps.googleusercontent.com';
+  var gisClient = null;
 
   function googleSignIn() {
     var gb = document.getElementById('googleBtn');
     var gErr = document.getElementById('gErr');
     if (gErr) gErr.style.display = 'none';
+
+    function fail(code) {
+      if (gb) gb.disabled = false;
+      // сам закрыл окно / передумал на консенте — не ошибка, молчим
+      if (code === 'popup_closed' || code === 'access_denied') return;
+      if (gErr) gErr.style.display = 'block';
+      if (window.track) track('google_signin_error', { code: code || 'unknown' });
+    }
+
+    if (!(window.google && google.accounts && google.accounts.oauth2)) {
+      fail('gsi_not_loaded'); // библиотека не загрузилась (офлайн/блокировщик)
+      return;
+    }
     if (gb) gb.disabled = true;
     if (window.track) track('google_signin_start');
-    hiyaAuthMods().then(function (m) {
-      var provider = new m.authMod.GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      return m.authMod.signInWithPopup(m.auth, provider).then(function (res) {
-        var email = res && res.user && res.user.email;
-        if (!email) throw new Error('no-email');
-        sendLead(email, 'google');
-      }).catch(function (e) {
-        // Safari и ко: попап заблокирован → полный redirect-флоу
-        if (e && e.code === 'auth/popup-blocked') {
-          try { sessionStorage.setItem('hiya_gauth', '1'); } catch (err) {}
-          return m.authMod.signInWithRedirect(m.auth, provider);
-        }
-        throw e;
-      });
-    }).catch(function (e) {
-      var code = (e && e.code) || '';
-      // закрыл окно сам — не ошибка, молчим
-      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        if (gErr) gErr.style.display = 'block';
-        if (window.track) track('google_signin_error', { code: code || 'unknown' });
-      }
-    }).then(function () {
-      if (gb && !modalBox.classList.contains('done')) gb.disabled = false;
-    });
-  }
 
-  // возврат после signInWithRedirect: забираем результат и завершаем заявку
-  (function () {
-    var pending = false;
-    try { pending = sessionStorage.getItem('hiya_gauth') === '1'; } catch (e) {}
-    if (!pending) return;
-    try { sessionStorage.removeItem('hiya_gauth'); } catch (e) {}
-    hiyaAuthMods().then(function (m) {
-      return m.authMod.getRedirectResult(m.auth);
-    }).then(function (res) {
-      var email = res && res.user && res.user.email;
-      if (!email) return;
-      openModal('google_redirect');
-      sendLead(email, 'google');
-    }).catch(function () {});
-  })();
+    if (!gisClient) {
+      gisClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'openid email',
+        callback: function (resp) {
+          if (!resp || !resp.access_token) { fail(resp && resp.error); return; }
+          fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: 'Bearer ' + resp.access_token }
+          }).then(function (r) { return r.json(); }).then(function (u) {
+            if (gb) gb.disabled = false;
+            if (u && u.email) sendLead(u.email, 'google');
+            else fail('no_email');
+          }).catch(function () { fail('userinfo_failed'); });
+        },
+        error_callback: function (err) { fail(err && err.type); }
+      });
+    }
+    gisClient.requestAccessToken();
+  }
   modal.addEventListener('keydown', function(e){
     if (e.key !== 'Tab') return;
     var f = Array.prototype.slice.call(modalBox.querySelectorAll('button, input')).filter(function(el){ return el.offsetParent !== null; });

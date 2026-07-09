@@ -326,9 +326,18 @@
   .wc-social { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; }
   .wc-avatars { display: flex; flex-shrink: 0; }
   .wc-av {
-    width: 20px; height: 20px; border-radius: 50%; margin-left: -7px; position: relative;
+    width: 22px; height: 22px; border-radius: 50%; margin-left: -6px; position: relative;
     border: 1.5px solid #14100b; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8.5px; font-weight: 800; letter-spacing: -0.3px; color: #2a1b0b;
+    text-transform: uppercase; user-select: none;
   }
+  /* новые (правые) поверх старых, чтобы инициалы предыдущих не срезались наложением */
+  .wc-av:nth-child(1) { z-index: 1; }
+  .wc-av:nth-child(2) { z-index: 2; }
+  .wc-av:nth-child(3) { z-index: 3; }
+  .wc-av:nth-child(4) { z-index: 4; }
+  .wc-av:nth-child(5) { z-index: 5; }
   .wc-av:first-child { margin-left: 0; }
   .wc-av:nth-child(1) { background: linear-gradient(135deg,#f2c98a,#c88a4e); }
   .wc-av:nth-child(2) { background: linear-gradient(135deg,#e8a7a0,#b5636e); }
@@ -1217,12 +1226,12 @@
 
   <div class="waitcount" id="waitcount" role="status" aria-live="polite">
     <span class="wc-halo" aria-hidden="true"></span>
-    <div class="wc-avatars wc-avatars-top" aria-hidden="true">
-      <span class="wc-av"></span>
-      <span class="wc-av"></span>
-      <span class="wc-av"></span>
-      <span class="wc-av"></span>
-      <span class="wc-av wc-av-live"></span>
+    <div class="wc-avatars wc-avatars-top" id="wcAvatars" aria-hidden="true">
+      <span class="wc-av">AK</span>
+      <span class="wc-av">DM</span>
+      <span class="wc-av">SN</span>
+      <span class="wc-av">EL</span>
+      <span class="wc-av wc-av-live">MB</span>
     </div>
     <div class="wc-headline">
       <span class="wc-num" id="wcNum">···</span>
@@ -1566,8 +1575,9 @@
 
     if (window.track) track('generate_lead', { method: method });
 
-    // count this signup toward the shared waitlist number
+    // count this signup toward the shared waitlist number + add initials avatar
     if (window.hiyaBump) window.hiyaBump();
+    if (window.hiyaAddAvatar) window.hiyaAddAvatar(email);
     var okText = document.getElementById('okText');
     if (okText && window.hiyaWaitTotal) {
       okText.innerHTML = 'Теперь в списке уже <b>' + window.hiyaWaitTotal() + '</b>. Напишем, как только запустимся в Алматы.';
@@ -1786,6 +1796,41 @@
     function lget() { try { return parseInt(localStorage.getItem(LKEY) || '0', 10) || 0; } catch (e) { return 0; } }
     function lset(v) { try { localStorage.setItem(LKEY, String(v)); } catch (e) {} }
 
+    // ── Аватарки-инициалы «уже в списке» ────────────────────────────
+    // Сид-инициалы заполняют ряд, пока реальных заявок мало; реальные
+    // приходят справа (новее — правее) и вытесняют сид. Синк — Firebase.
+    var AKEY = 'hiya_wait_avatars';
+    var SEED = ['AK', 'DM', 'SN', 'EL', 'MB'];
+    var avEls = Array.prototype.slice.call(document.querySelectorAll('#wcAvatars .wc-av'));
+    var realAv = [];
+    function sanitizeIni(s) {
+      return String(s || '').replace(/[^0-9A-Za-zА-Яа-яЁё]/g, '').slice(0, 2).toUpperCase();
+    }
+    // «первые 2 буквы, а если есть разделитель (. _ - + и т.п.) — по первой из двух частей»
+    function initialsFromEmail(email) {
+      var local = String(email || '').split('@')[0].toLowerCase();
+      var isLetter = /[a-zа-яё]/i;
+      var parts = local.split(/[^0-9a-zа-яё]+/i).filter(Boolean);
+      function firstLetter(s) { var m = s.match(isLetter); return m ? m[0] : (s.charAt(0) || ''); }
+      var ini = '';
+      if (parts.length >= 2) {
+        ini = firstLetter(parts[0]) + firstLetter(parts[1]);
+      } else if (parts.length === 1) {
+        var letters = parts[0].match(new RegExp(isLetter.source, 'gi')) || [];
+        ini = letters.length >= 2 ? letters[0] + letters[1] : parts[0].slice(0, 2);
+      }
+      return sanitizeIni(ini);
+    }
+    function renderAvatars() {
+      if (!avEls.length) return;
+      var display = SEED.concat(realAv).slice(-avEls.length); // ряд всегда полный
+      avEls.forEach(function (el, i) {
+        el.textContent = display[i] || '';
+        el.classList.toggle('wc-av-live', i === avEls.length - 1);
+      });
+    }
+    renderAvatars();
+
     var cfg = window.FIREBASE_CONFIG;
     if (cfg && cfg.databaseURL) {
       if (numEl) numEl.classList.add('wait');
@@ -1808,16 +1853,43 @@
             signups += 1; render();                                   // instant, optimistic
             try { dbMod.runTransaction(countRef, function (c) { return (c || 0) + 1; }); } catch (e) {}
           };
+          // синхронные аватарки-инициалы: последние N заявок для всех одинаково
+          var recentRef = dbMod.ref(db, 'waitlist/recent');
+          dbMod.onValue(dbMod.query(recentRef, dbMod.limitToLast(avEls.length || 5)), function (snap) {
+            var arr = [];
+            snap.forEach(function (ch) { var i = sanitizeIni(ch.val() && ch.val().i); if (i) arr.push(i); });
+            realAv = arr; renderAvatars();
+          });
+          window.hiyaAddAvatar = function (email) {
+            var ini = initialsFromEmail(email); if (!ini) return;
+            realAv = realAv.concat(ini).slice(-(avEls.length || 5)); renderAvatars(); // optimistic
+            // .catch: push() отклоняет промис (не throw), напр. при PERMISSION_DENIED —
+            // без него была бы «Uncaught (in promise)»; аватарка всё равно показана локально
+            try { dbMod.push(recentRef, { i: ini, t: dbMod.serverTimestamp() }).catch(function () {}); } catch (e) {}
+          };
         } catch (e) {
           settled = true; clearTimeout(failsafe);
           signups = lget(); render();
           window.hiyaBump = function () { signups = lget() + 1; lset(signups); render(); };
+          setupLocalAvatars();
         }
       })();
     } else {
       // Local-only fallback until a Firebase config is pasted above.
       signups = lget(); render();
       window.hiyaBump = function () { signups = lget() + 1; lset(signups); render(); };
+      setupLocalAvatars();
+    }
+
+    // без базы аватарки живут локально (у каждого браузера свои) — не синкаются
+    function setupLocalAvatars() {
+      try { realAv = JSON.parse(localStorage.getItem(AKEY) || '[]') || []; } catch (e) { realAv = []; }
+      renderAvatars();
+      window.hiyaAddAvatar = function (email) {
+        var ini = initialsFromEmail(email); if (!ini) return;
+        realAv = realAv.concat(ini).slice(-(avEls.length || 5)); renderAvatars();
+        try { localStorage.setItem(AKEY, JSON.stringify(realAv)); } catch (e) {}
+      };
     }
   })();
 
@@ -1841,7 +1913,7 @@
         phone = th.querySelector('.th-phone'), heart = th.querySelector('.th-heart'),
         replay = th.querySelector('.th-replay');
     var caps = th.querySelectorAll('.th-cap');
-    var timers = [], playing = false;
+    var timers = [], playing = false, gen = 0, warmPromise = null;
 
     th.classList.add('dim', 'idle'); // без JS титры не затемняются вовсе
 
@@ -1853,7 +1925,19 @@
       var p = actor.querySelector('.th-pop');
       if (p) { p.classList.remove('pop'); void p.offsetWidth; p.classList.add('pop'); }
     }
+    // Прогрев: декодируем ВСЕ кадры заранее, чтобы скрытые позы (opacity:0)
+    // не декодировались в момент первого показа — иначе кадр моргает.
+    function warm(){
+      if (warmPromise) return warmPromise;
+      var imgs = th.querySelectorAll('img');
+      warmPromise = Promise.all(Array.prototype.map.call(imgs, function(img){
+        img.loading = 'eager'; // decode() у lazy-картинки — заставляем подгрузиться
+        return (img.decode ? img.decode() : Promise.reject()).catch(function(){});
+      }));
+      return warmPromise;
+    }
     function reset(){
+      gen++; // отменяем отложенный старт: пока грелись кадры, сцену могли сбросить
       stop();
       [man, woman, phone].forEach(function(a){ a.classList.remove('in', 'close'); });
       man.setAttribute('data-show', '1'); woman.setAttribute('data-show', '1');
@@ -1869,9 +1953,7 @@
       heart.classList.add('rest'); cap(3); replay.classList.add('show');
     }
     var everPlayed = false;
-    function play(){
-      reset(); th.classList.remove('idle'); playing = true; everPlayed = true;
-      if (reduce) { finale(); playing = false; return; }
+    function runTimeline(){
       later(300,   function(){ man.classList.add('in'); });                                  // он выползает
       later(1500,  function(){ woman.classList.add('in'); });                                // вдалеке — она
       later(2700,  function(){ pose(man, 2); cap(1); });                                     // увидел её!
@@ -1882,6 +1964,16 @@
       later(9500,  function(){ cap(3); phone.classList.remove('in'); th.classList.remove('tapping'); });
       later(10300, function(){ pose(man, 4); man.classList.add('close'); pose(woman, 3); heart.classList.add('rest'); }); // подходит
       later(11900, function(){ replay.classList.add('show'); playing = false; later(6500, play); }); // мягкий автоповтор
+    }
+    function play(){
+      reset(); th.classList.remove('idle'); playing = true; everPlayed = true;
+      if (reduce) { finale(); playing = false; return; }
+      var myGen = gen;
+      // ждём прогрева кадров (после первого раза — мгновенно), чтобы не моргало
+      warm().then(function(){
+        if (myGen !== gen || !playing) return; // сцену успели сбросить/перезапустить
+        runTimeline();
+      });
     }
     replay.addEventListener('click', function(){ if (window.track) track('theater_replay'); play(); });
 
@@ -1900,6 +1992,12 @@
       var r = stage.getBoundingClientRect();
       if (!playing && r.top < innerHeight * 0.7 && r.bottom > innerHeight * 0.3) { play(); }
     }, { passive: true });
+
+    // прогреваем кадры в простое ПОСЛЕ полной загрузки — не мешаем первому экрану,
+    // но к моменту доскролла до сцены они уже декодированы и не моргают
+    var kickWarm = function(){ (window.requestIdleCallback || function(f){ setTimeout(f, 1200); })(warm); };
+    if (document.readyState === 'complete') kickWarm();
+    else window.addEventListener('load', kickWarm, { once: true });
   })();
 
   // ── Motion: parallax + phone float/rotate + particles (one rAF loop)

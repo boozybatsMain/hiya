@@ -867,6 +867,7 @@
   .cta-box h2, .cta-box .cta-note { position: relative; }
   .cta-box h2 { margin-bottom: 14px; }
   .cta-box p { font-size: 18px; color: var(--ink-2); margin-bottom: 34px; position: relative; }
+  .cta-box p b { color: var(--gold); font-weight: 800; font-variant-numeric: tabular-nums; }
   .cta-box .btn-gold {
     font-size: 18px; padding: 19px 52px; position: relative;
     box-shadow: 0 12px 44px rgba(207,160,85,0.3), inset 0 1px 0 rgba(255,255,255,0.45);
@@ -1468,7 +1469,7 @@
     <span class="m-spark cs2" aria-hidden="true">✦</span>
     <span class="m-spark cs3" aria-hidden="true">✦</span>
     <h2>Хватит гадать, можно ли подойти</h2>
-    <p>Первый старт только в Алматы.</p>
+    <p><b id="ctaWaitNum">···</b> <span id="ctaWaitNoun">человек</span> уже ждут первый старт в Алматы</p>
     <button class="btn btn-gold" onclick="openModal('cta_bottom')"><span>Попробовать первым</span></button>
     <div class="cta-note">Без спама. Напишем только в день запуска.</div>
   </div>
@@ -1786,6 +1787,11 @@
       if (numEl) numEl.classList.remove('wait');
       animateNum(shown, total); shown = total;      // большое число — сколько уже ждут запуск (растёт при заявке)
       if (nounEl) nounEl.textContent = ruPlural(total, 'человек', 'человека', 'человек');
+      // то же живое число — в подзаголовке финального CTA
+      var ctaNum = document.getElementById('ctaWaitNum');
+      var ctaNoun = document.getElementById('ctaWaitNoun');
+      if (ctaNum) ctaNum.textContent = total;
+      if (ctaNoun) ctaNoun.textContent = ruPlural(total, 'человек', 'человека', 'человек');
       if (leftEl) leftEl.textContent = left;         // сколько мест осталось — в подписи под баром
       if (leftNounEl) leftNounEl.textContent = ruPlural(left, 'место', 'места', 'мест');
       if (fillEl) fillEl.style.width = Math.max(4, Math.min(100, total / TARGET * 100)).toFixed(1) + '%';

@@ -437,6 +437,37 @@
   .cta-note { position: relative; font-size: 12.5px; font-weight: 500; color: var(--ink-3); text-align: center; }
   .cta-box .cta-note { margin-top: 12px; }
 
+  /* ── Стрелки «листайте вниз» ──
+     Абсолютом внутри героя — высоту первого экрана не добавляют.
+     Прибиты к низу ПЕРВОГО ЭКРАНА (top: 100svh − высота стрелок − зазор),
+     а не к низу героя: на невысоких окнах контент героя выше вьюпорта,
+     и «низ героя» уехал бы за пределы первого экрана. Hero начинается с
+     верха страницы, так что 100svh от его top = нижняя кромка вьюпорта.
+     После начала скролла JS вешает .away и стрелки гаснут. */
+  .scroll-cue {
+    position: absolute; z-index: 2; left: 50%;
+    top: calc(100vh - 32px);   /* фолбэк для браузеров без svh */
+    top: calc(100svh - 32px);  /* высота стрелок 24px + зазор 8px */
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 5px 16px; border-radius: 100px;
+    color: var(--gold); opacity: .75;
+    transition: opacity .45s ease;
+  }
+  .scroll-cue:hover { opacity: 1; }
+  .scroll-cue:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold); }
+  .scroll-cue.away { opacity: 0; pointer-events: none; }
+  /* тень-отсечка: на планшетах/низких окнах контент героя выше вьюпорта,
+     и стрелки ложатся поверх контента — тень отделяет их от пёстрого фона */
+  .scroll-cue svg { display: block; filter: drop-shadow(0 1px 4px rgba(10,8,6,0.9)); }
+  .scroll-cue svg + svg { margin-top: -6px; }
+  .scroll-cue svg:first-child { animation: cue-bob 2.4s ease-in-out infinite; }
+  .scroll-cue svg:last-child { animation: cue-bob 2.4s ease-in-out .3s infinite; }
+  @keyframes cue-bob {
+    0%, 100% { opacity: .4; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(3px); }
+  }
+
   /* ── Realistic 3D iPhone ────────── */
   .stage { position: relative; z-index: 2; display: flex; justify-content: center; max-width: 100%; }
   .ip3d-scene {
@@ -1090,6 +1121,9 @@
     .m-spark, .m-ic-halo { animation: none !important; }
     .ipop-btn, .ipop-btn::after, .ipop-card { animation: none !important; }
     .tap-hint { display: none; }
+    /* стрелки скролла: статичные, но видимые — подсказка остаётся */
+    .scroll-cue { transition: none !important; }
+    .scroll-cue svg { animation: none !important; }
     [data-speed] { transform: none !important; }
   }
 
@@ -1117,6 +1151,12 @@
     .cta { padding-top: 8px; padding-bottom: 64px; }
     .cta-box { padding: 60px 28px; }
     .pill-city { padding: 7px 12px; font-size: 13px; gap: 5px; }
+    /* padding-bottom героя тут 22–26px — ужимаем стрелки, чтобы влезали в него */
+    .scroll-cue {
+      padding: 4px 14px;
+      top: calc(100vh - 24px);
+      top: calc(100svh - 24px);  /* высота стрелок 22px + зазор 2px */
+    }
   }
 
   /* ── Responsive: phones ──────────────── */
@@ -1457,6 +1497,11 @@
       </div>
     </div>
   </div>
+
+  <a class="scroll-cue" id="scrollCue" href="#how" data-track="scroll_cue" aria-label="Листайте вниз: как это работает">
+    <svg width="22" height="10" viewBox="0 0 22 10" fill="none" aria-hidden="true"><path d="M2 1.5 11 8.5 20 1.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg width="22" height="10" viewBox="0 0 22 10" fill="none" aria-hidden="true"><path d="M2 1.5 11 8.5 20 1.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </a>
 </header>
 
 <div class="sec-orn" aria-hidden="true"><i></i><b>✦</b><i></i></div>
@@ -2058,6 +2103,19 @@
     function onScrollOrResize(){ if (!ticking) { ticking = true; requestAnimationFrame(check); } }
     window.addEventListener('scroll', onScrollOrResize, { passive: true });
     window.addEventListener('resize', onScrollOrResize, { passive: true });
+    check();
+  })();
+
+  // ── Стрелки-подсказка скролла: видны, только пока страница у верха ──
+  (function(){
+    var cue = document.getElementById('scrollCue');
+    if (!cue) return;
+    var ticking = false;
+    function check(){
+      ticking = false;
+      cue.classList.toggle('away', (window.scrollY || window.pageYOffset || 0) > 60);
+    }
+    window.addEventListener('scroll', function(){ if (!ticking) { ticking = true; requestAnimationFrame(check); } }, { passive: true });
     check();
   })();
 

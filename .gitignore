@@ -2,9 +2,16 @@
 .DS_Store
 *.log
 
+# Артефакты MCP-браузера и случайные скриншоты в корне (не ассеты сайта)
+.playwright-mcp/
+/*.png
+
 # Secrets — NEVER commit (service-account keys, env)
 *service_account*.json
 *.iam.gserviceaccount.com.json
 hiya-e8f5c-*.json
 .env
 .env.*
+
+# Local-only project context — держим на машине, НЕ в публичном репо
+docs/overview.md

@@ -50,7 +50,10 @@
        Google (disallowed_useragent) — прячем кнопку Google, оставляем только email.
        Детект по UA, независимо от аналитики (работает и на localhost для проверки). */
     var UA = navigator.userAgent || '';
-    window.HIYA_INAPP = /Instagram/i.test(UA) || /FBAN|FBAV|FB_IAB/i.test(UA);
+    // ?showgoogle=1 — форс-показ кнопки Google даже в in-app webview (для СОБСТВЕННОГО
+    // теста из Instagram/Facebook; на реальных пользователей без этого флага не влияет)
+    var forceGoogle = /[?&]showgoogle=1(&|$)/.test(location.search);
+    window.HIYA_INAPP = (/Instagram/i.test(UA) || /FBAN|FBAV|FB_IAB/i.test(UA)) && !forceGoogle;
     if (window.HIYA_INAPP) {
       document.documentElement.classList.add('inapp');
       document.addEventListener('DOMContentLoaded', function () {

@@ -19,3 +19,12 @@
 консоль Firebase и менять настройки проекта (Auth-провайдеры, домены, правила RTDB)
 по задаче. Google-провайдер в Authentication включён (support email
 camafobia@gmail.com), домен `boozybatsmain.github.io` добавлен в Authorized domains.
+
+## Google Analytics — доступ через код
+
+К данным GA4 можно обращаться **кодом**, не только через UI. Сервис-аккаунт
+`hiya-analytics@hiya-e8f5c.iam.gserviceaccount.com`; ключ — `~/.config/hiya/hiya-sa.json`
+(**секрет**, лежит ВНЕ репозитория/папки сайта, права 600). Готовый скрипт без gcloud:
+`scripts/ga_report.sh` (сервис-аккаунт → JWT → token → GA4 Data API на curl+openssl).
+Property ID `544629918`. Полная инструкция, идентификаторы и примеры запросов —
+в [`docs/google-analytics.md`](docs/google-analytics.md).

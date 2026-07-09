@@ -1,3 +1,10 @@
 .claude/
 .DS_Store
 *.log
+
+# Secrets — NEVER commit (service-account keys, env)
+*service_account*.json
+*.iam.gserviceaccount.com.json
+hiya-e8f5c-*.json
+.env
+.env.*

@@ -195,9 +195,10 @@
   }
   .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
   .brand {
-    font-size: 24px; font-weight: 800; letter-spacing: -0.03em;
+    font-size: 24px; font-weight: 800; letter-spacing: -0.03em; cursor: pointer;
     background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
+  .brand:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 4px; }
   .nav-right { display: flex; align-items: center; gap: 14px; }
   .pill-city {
     display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--ink);
@@ -1080,7 +1081,7 @@
 
 <nav>
   <div class="wrap nav-inner">
-    <div class="brand">hiya.</div>
+    <div class="brand" role="button" tabindex="0" aria-label="Открыть форму раннего доступа" onclick="openModal('logo_top')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">hiya.</div>
     <div class="nav-right">
       <span class="pill-city">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -1316,7 +1317,7 @@
 
 <footer>
   <div class="wrap foot">
-    <div class="brand">hiya.</div>
+    <div class="brand" role="button" tabindex="0" aria-label="Открыть форму раннего доступа" onclick="openModal('logo_bottom')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">hiya.</div>
     <div>© 2026 hiya</div>
   </div>
 </footer>

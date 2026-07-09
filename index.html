@@ -285,6 +285,27 @@
   @keyframes wc-shine { 0%{transform:translateX(-120%)} 100%{transform:translateX(260%)} }
   .wc-label { position: relative; z-index: 1; font-size: 14.5px; color: var(--ink-2); font-weight: 500; }
   .wc-label b { color: var(--ink); font-weight: 700; }
+  /* соц-доказательство: аватарки «уже в списке» */
+  .wc-social { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; }
+  .wc-avatars { display: flex; flex-shrink: 0; }
+  .wc-av {
+    width: 28px; height: 28px; border-radius: 50%; margin-left: -9px; position: relative;
+    border: 2px solid #14100b; box-shadow: 0 2px 7px rgba(0,0,0,0.4);
+  }
+  .wc-av:first-child { margin-left: 0; }
+  .wc-av:nth-child(1) { background: linear-gradient(135deg,#f2c98a,#c88a4e); }
+  .wc-av:nth-child(2) { background: linear-gradient(135deg,#e8a7a0,#b5636e); }
+  .wc-av:nth-child(3) { background: linear-gradient(135deg,#cbb98a,#8f7a4e); }
+  .wc-av:nth-child(4) { background: linear-gradient(135deg,#e0a888,#b06a4e); }
+  .wc-av:nth-child(5) { background: linear-gradient(135deg,#f4e2bc,#d9b16a); }
+  .wc-av-live::after {
+    content: ""; position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px;
+    border-radius: 50%; background: var(--live); border: 2px solid #14100b;
+    animation: wc-live 1.9s ease-in-out infinite;
+  }
+  @keyframes wc-live { 0%,100% { box-shadow: 0 0 0 0 rgba(99,212,147,0.55); } 50% { box-shadow: 0 0 0 5px rgba(99,212,147,0); } }
+  .wc-joined { font-size: 14.5px; font-weight: 500; color: var(--ink-2); }
+  .wc-joined b { color: var(--ink); font-weight: 800; font-variant-numeric: tabular-nums; }
 
   .hero-actions { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; margin-top: 6px; }
   .hero-actions .btn-gold { font-size: 16px; padding: 17px 36px; }
@@ -597,6 +618,12 @@
     background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.6) 50%, transparent 62%);
     transform: translateX(-130%); animation: ipop-shine 2.3s ease-in-out infinite;
   }
+  /* secondary-вариант кнопки в макете телефона: тише главного CTA — без заливки, пульса и блеска */
+  .ipop-btn.is-secondary {
+    background: rgba(231, 198, 145, 0.07); color: var(--gold);
+    border: 1px solid var(--line-2); box-shadow: none; animation: none;
+  }
+  .ipop-btn.is-secondary::after { content: none; }
   @keyframes ipop-pulse {
     0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 0 0 0 rgba(231,198,145,0.55); }
     50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 0 0 calc(9 * var(--pu)) rgba(231,198,145,0); }
@@ -839,7 +866,7 @@
     .reveal { opacity: 1; transform: none; transition: none; }
     .btn, .pcard, .step, .b-card, .app-cta, .modal, .overlay, .grain { transition: none !important; }
     .btn-gold:hover, .btn-ghost:active, .step:hover, .b-card:hover { transform: none; }
-    .wc-halo, .wc-bar > span::after, .pcard-like, .ms-heart { animation: none !important; }
+    .wc-halo, .wc-bar > span::after, .pcard-like, .ms-heart, .wc-av-live::after { animation: none !important; }
     .m-spark, .m-ic-halo { animation: none !important; }
     .ipop-btn, .ipop-btn::after, .ipop-card { animation: none !important; }
     .tap-hint { display: none; }
@@ -1043,18 +1070,27 @@
 
   <div class="waitcount" id="waitcount" role="status" aria-live="polite">
     <span class="wc-halo" aria-hidden="true"></span>
+    <div class="wc-social">
+      <div class="wc-avatars" aria-hidden="true">
+        <span class="wc-av"></span>
+        <span class="wc-av"></span>
+        <span class="wc-av"></span>
+        <span class="wc-av"></span>
+        <span class="wc-av wc-av-live"></span>
+      </div>
+      <span class="wc-joined"><b id="wcJoined">···</b> уже в списке</span>
+    </div>
     <div class="wc-headline">
-      <span class="wc-pre">Осталось</span>
       <span class="wc-num" id="wcNum">···</span>
-      <span class="wc-of"><b id="wcNoun">мест</b> из 300</span>
+      <span class="wc-of"><b id="wcNoun">человек</b> из 300 осталось до запуска</span>
     </div>
     <div class="wc-bar"><span id="wcFill"></span></div>
     <div class="wc-label">Первый запуск — только в <b>Алматы</b></div>
   </div>
 
   <div class="hero-actions">
-    <button class="btn btn-gold" onclick="openModal('hero')"><span>Запросить приглашение</span></button>
-    <div class="cta-note">Бесплатно. Пригласим одним из первых.</div>
+    <button class="btn btn-gold" onclick="openModal('hero')"><span>Получить ранний доступ</span></button>
+    <div class="cta-note">Быстро. Бесплатно. Пригласим первым.</div>
   </div>
 
   <div class="stage">
@@ -1161,7 +1197,7 @@
               <div class="ipop-card">
                 <div class="ipop-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
                 <div class="ipop-title"><b class="ipop-hl">9 человек</b> в этом заведении открыты к&nbsp;знакомству</div>
-                <button class="ipop-btn" id="introBtn" type="button"><span>Хочу познакомиться!</span></button>
+                <button class="ipop-btn is-secondary" id="introBtn" type="button"><span>Хочу познакомиться!</span></button>
               </div>
             </div>
 
@@ -1260,7 +1296,7 @@
     <div class="form">
       <div class="m-ic"><span class="m-ic-halo" aria-hidden="true"></span><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="4"/><path d="m22 7-10 6L2 7"/></svg></div>
       <div class="m-orn" aria-hidden="true"><i></i><b>◆</b><i></i></div>
-      <h3>Запросить приглашение</h3>
+      <h3>Получить ранний доступ</h3>
       <p>Войдите через Google или оставьте почту — пригласим вас одним из первых.</p>
       <button class="btn btn-google" id="googleBtn" type="button" onclick="googleSignIn()">
         <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
@@ -1271,7 +1307,7 @@
       <input type="email" name="email" placeholder="lover@icloud.com" id="email" autocomplete="email" inputmode="email" onkeydown="if(event.key==='Enter'){event.preventDefault();submitEmail();}">
       <input type="text" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Leave this empty" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0">
       <div id="emailErr" role="alert" style="display:none;color:#e8a48a;font-size:13.5px;margin:-4px 0 12px">Введите корректный e-mail</div>
-      <button class="btn btn-gold" id="submitBtn" onclick="submitEmail()"><span>Запросить приглашение</span></button>
+      <button class="btn btn-gold" id="submitBtn" onclick="submitEmail()"><span>Получить ранний доступ</span></button>
       <div class="m-note"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Никакого спама — только одно письмо с приглашением</div>
     </div>
     <div class="ok">
@@ -1521,6 +1557,7 @@
     var numEl = document.getElementById('wcNum');
     var nounEl = document.getElementById('wcNoun');
     var fillEl = document.getElementById('wcFill');
+    var joinedEl = document.getElementById('wcJoined');
 
     function ruPlural(n, one, few, many) {
       var m = Math.abs(n) % 100, d = m % 10;
@@ -1547,7 +1584,8 @@
       var left = Math.max(0, TARGET - total);   // показываем, сколько МЕСТ осталось
       if (numEl) numEl.classList.remove('wait');
       animateNum(shown, left); shown = left;
-      if (nounEl) nounEl.textContent = ruPlural(left, 'место', 'места', 'мест');
+      if (nounEl) nounEl.textContent = ruPlural(left, 'человек', 'человека', 'человек');
+      if (joinedEl) joinedEl.textContent = total;   // сколько уже в списке — под аватарками, растёт при заявке
       if (fillEl) fillEl.style.width = Math.max(4, Math.min(100, total / TARGET * 100)).toFixed(1) + '%';
     }
     window.hiyaWaitTotal = function () { return BASE + signups; };

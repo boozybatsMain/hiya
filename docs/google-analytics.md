@@ -53,16 +53,32 @@ bash scripts/ga_report.sh '{"dateRanges":[{"startDate":"28daysAgo","endDate":"to
 
 ## Кастомные события сайта
 `open_signup`, `generate_lead` (param `method`: `google` | `early_access`),
-`google_signin_start`, `google_signin_error` (param `code`), `modal_close`,
+`lead_error` (param `stage`: `ajax_reject` | `ajax_fail` — заявка ушла запасным
+путём), `google_signin_start`, `google_signin_error` (param `code`), `modal_close`,
 `scroll_start`, `scroll_depth` (`percent`), `section_view` (`section`),
 `page_exit` (`engagement_seconds`, `max_scroll`, `last_section`),
 `ui_click` (`label`, `area`), `app_like_demo`, `intro_dismiss`,
 `view_how_it_works`, `inapp_browser`.
 Плюс авто-события GA4 (enhanced measurement): `form_start`, `form_submit`, `scroll`, `session_start`, `first_visit`, `user_engagement`.
 
-> Параметры кастомных событий (`method`, `percent`, `section`…) в Data API доступны
-> как `customEvent:<name>` только если зарегистрированы как custom dimensions в
-> GA Admin. Иначе их видно лишь в DebugView / BigQuery-экспорте.
+**В каждое событие** дополнительно подмешиваются параметры first-touch атрибуции
+`ft_source`, `ft_campaign`, `ft_content` (см. `docs/tracking.md`) — по ним видно
+исходную кампанию/креатив, даже когда сессия потеряла атрибуцию (in-app браузер).
+
+Важно: `generate_lead` шлётся **после подтверждения** отправки FormSubmit'ом
+(AJAX), а не fire-and-forget — число лидов в GA сходится с письмами.
+
+## Ключевые события и custom dimensions (настроено в GA Admin)
+
+- **Key events**: `generate_lead` (главная конверсия), `open_signup`
+  (микроконверсия). Дефолтный `purchase` не используется — на сайте не срабатывает.
+- **Custom dimensions** (event scope): `method`, `source`, `section`, `label`,
+  `last_section`, `max_scroll`, `engagement_seconds`, `ft_source`, `ft_campaign`,
+  `ft_content`. В Data API они доступны как `customEvent:<имя>`.
+
+> Параметры без регистрации в custom dimensions в Data API недоступны — их видно
+> лишь в DebugView / BigQuery-экспорте. Регистрировать заранее: задним числом
+> данные в измерение не попадают.
 
 ## Смежные API того же сервис-аккаунта
 - **GA Admin API** (`analyticsadmin.googleapis.com`) — читать/менять настройки ресурса,

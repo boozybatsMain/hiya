@@ -11,11 +11,19 @@
      аналитики ниже: НЕ в Instagram/Facebook webview (там Google OAuth заблокирован
      политикой Google) и вне первого кадра — чтобы первый тап не залипал. -->
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}.intro-pop{display:none !important}.th-actor:not(.th-phone){transform:none !important}</style></noscript>
-<!-- ── Аналитика: Google Analytics 4 ────────────────────────────────
-     Вставь свой Measurement ID (вида G-XXXXXXXXXX) из GA4 в GA_ID ниже.
-     Пока стоит заглушка — аналитика спит и ничего лишнего не грузит.   -->
+<!-- ── Аналитика: Google Analytics 4 + Microsoft Clarity + Meta Pixel ──
+     GA_ID — Measurement ID из GA4. FB_PIXEL_ID — ID датасета (пикселя) из
+     Meta Events Manager: пока пусто — пиксель спит; чтобы включить, создай
+     датасет (нужно бизнес-портфолио Meta) и впиши сюда его числовой ID.
+     События пикселя уже подключены ниже: PageView, OpenSignup (открытие
+     модалки), Lead (подтверждённая заявка). gtag и Clarity грузятся СРАЗУ
+     (async, рендер не блокируют): ленивая загрузка теряла короткие визиты
+     (~80% рекламного трафика уходит за секунды). Лениво грузится только
+     тяжёлый Google Sign-In. Исключение своего трафика ?mytraffic=off
+     действует на все три системы. -->
 <script>
   window.GA_ID = "G-ZBFLNG3JNW"; /* Measurement ID из Google Analytics 4 */
+  window.FB_PIXEL_ID = "";       /* Meta Pixel: ID датасета из Events Manager */
   (function () {
     var id = window.GA_ID;
     window.dataLayer = window.dataLayer || [];
@@ -40,11 +48,76 @@
     var host = location.hostname;
     var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '';
     var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX' && !isLocal && !optedOut;
+
+    /* ── First-touch атрибуция (UTM/fbclid) ────────────────────────────
+       При первом заходе сохраняем источник в localStorage и дальше подмешиваем
+       его в каждое GA-событие (ft_*), в теги Clarity и в письмо с лидом.
+       Иначе лид, пришедший из рекламы, в отчётах числится как (direct):
+       in-app браузеры теряют referrer, а UTM живут только одну сессию.
+       Если сохранён (direct), а новый заход пришёл с UTM/fbclid — апгрейдим:
+       рекламный источник ценнее раннего «пустого» захода. */
+    var FT = null;
+    try {
+      var q2 = new URLSearchParams(location.search);
+      FT = JSON.parse(localStorage.getItem('hiya_ft') || 'null');
+      var utmSrc = q2.get('utm_source'), fbclid = q2.get('fbclid');
+      var fresh = {
+        source:   utmSrc || (fbclid ? 'fb_click' : (document.referrer ? (new URL(document.referrer)).hostname : '(direct)')),
+        medium:   q2.get('utm_medium')   || '',
+        campaign: q2.get('utm_campaign') || '',
+        content:  q2.get('utm_content')  || '',
+        term:     q2.get('utm_term')     || '',
+        fbclid:   fbclid || '',
+        ref:      document.referrer || '',
+        lp:       location.pathname + location.search,
+        ts:       Date.now()
+      };
+      var upgrade = FT && (FT.source === '(direct)' || !FT.source) && (utmSrc || fbclid);
+      if (!FT || upgrade) { FT = fresh; localStorage.setItem('hiya_ft', JSON.stringify(FT)); }
+    } catch (e) {}
+    window.hiyaFT = function () { return FT || {}; };
+
     /* Безопасный трекер событий: молчит, пока не вставлен реальный ID.
-       gtag складывает события в dataLayer — они дождутся отложенной gtag.js,
-       поэтому ранние события не теряются даже при ленивой загрузке. */
-    window.track = function (name, params) { if (live) gtag('event', name, params || {}); };
+       Подмешивает first-touch источник (ft_*) в каждое событие — в GA эти
+       параметры доступны как custom dimensions даже когда сессия потеряла
+       атрибуцию (in-app браузер, поздняя загрузка тега). */
+    window.track = function (name, params) {
+      if (!live) return;
+      var p = params || {};
+      if (FT) {
+        if (p.ft_source == null)   p.ft_source   = FT.source;
+        if (p.ft_campaign == null) p.ft_campaign = FT.campaign;
+        if (p.ft_content == null)  p.ft_content  = FT.content;
+      }
+      gtag('event', name, p);
+    };
     if (live) { gtag('js', new Date()); gtag('config', id); }
+
+    /* ── Meta Pixel ────────────────────────────────────────────────────
+       Включается только при заполненном FB_PIXEL_ID и live (localhost и
+       ?mytraffic=off исключают и пиксель). fbevent — безопасная обёртка:
+       fbevent('track','Lead',{...}, eventId) / fbevent('trackCustom','OpenSignup',{...}).
+       eventId нужен для будущей дедупликации с Conversions API. */
+    var pixelLive = live && !!window.FB_PIXEL_ID;
+    if (pixelLive) {
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+      n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+      document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', window.FB_PIXEL_ID);
+      fbq('track', 'PageView');
+    }
+    window.fbevent = function (type, name, params, eventId) {
+      if (!pixelLive || !window.fbq) return;
+      if (eventId) fbq(type, name, params || {}, { eventID: eventId });
+      else fbq(type, name, params || {});
+    };
+
+    /* Clarity: обёртка для custom tags (источник, открытие модалки, лид) —
+       по ним фильтруются записи сессий, например «открыл модалку, но не
+       оставил заявку». Очередь clarity принимает вызовы до загрузки тега. */
+    window.ctag = function (k, v) { if (window.clarity) clarity('set', k, v); };
 
     /* In-app браузер Instagram/Facebook: Google OAuth там заблокирован политикой
        Google (disallowed_useragent) — прячем кнопку Google, оставляем только email.
@@ -63,37 +136,38 @@
       });
     }
 
-    /* ── Ленивая загрузка сторонних скриптов ──────────────────────────
-       GA, Clarity и Google-вход НЕ нужны для первого кадра. Грузим их в простое
-       (requestIdleCallback) ИЛИ на первом действии пользователя — так тяжёлый JS
-       не выполняется в момент первого тапа и тот не залипает. Порог 800мс держит
-       загрузку ранней, чтобы не терять короткие визиты; фильтр localhost /
-       mytraffic=off сохранён через live. */
+    /* ── Загрузка сторонних скриптов ──────────────────────────────────
+       gtag.js и Clarity грузятся СРАЗУ (async — рендер не блокируют).
+       Раньше они ждали idle 800мс или первого касания — и короткие визиты
+       (большинство рекламного трафика) умирали до загрузки тегов: терялись
+       page_view с атрибуцией, сессии в Clarity, вовлечённость в GA.
+       Лениво остаётся только Google Sign-In: он тяжёлый, нужен лишь у модалки
+       и, загружаясь на первом касании, сам вносил лаг в этот первый тап. */
     function loadScript(src) {
       var el = document.createElement('script'); el.async = true; el.src = src;
       (document.head || document.documentElement).appendChild(el); return el;
     }
-    function startClarity() {
+    if (live) {
+      loadScript('https://www.googletagmanager.com/gtag/js?id=' + id);
       (function (c, l, a, r, i, t, y) {
         c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
         t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
         y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
       })(window, document, "clarity", "script", "xjnrzbddvw");
-    }
-    var tpLoaded = false;
-    function loadThirdParty() {
-      if (tpLoaded) return; tpLoaded = true;
-      if (live) {
-        loadScript('https://www.googletagmanager.com/gtag/js?id=' + id);
-        startClarity();
+      // first-touch источник — тегами в Clarity: фильтр записей по кампании/креативу
+      if (FT) {
+        if (FT.source)   ctag('ft_source', FT.source);
+        if (FT.campaign) ctag('ft_campaign', FT.campaign);
+        if (FT.content)  ctag('ft_content', FT.content);
       }
+    }
+    var gsiLoaded = false;
+    function loadGsi() {
+      if (gsiLoaded) return; gsiLoaded = true;
       if (!window.HIYA_INAPP) loadScript('https://accounts.google.com/gsi/client');
     }
-    if (window.requestIdleCallback) requestIdleCallback(loadThirdParty, { timeout: 800 });
-    else setTimeout(loadThirdParty, 800);
-    ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach(function (ev) {
-      window.addEventListener(ev, loadThirdParty, { once: true, passive: true, capture: true });
-    });
+    if (window.requestIdleCallback) requestIdleCallback(loadGsi, { timeout: 1500 });
+    else setTimeout(loadGsi, 1500);
   })();
 </script>
 <!-- ── Счётчик заявок: Firebase Realtime Database ────────────────────
@@ -1535,6 +1609,8 @@
 
   function openModal(source) {
     if (window.track) track('open_signup', { source: source || 'unknown' });
+    if (window.fbevent) fbevent('trackCustom', 'OpenSignup', { source: source || 'unknown' });
+    if (window.ctag) ctag('modal', 'opened'); // сегмент Clarity: «открыл модалку»
     window._modalReturn = document.activeElement;
     modalBox.classList.remove('done');
     var sb = document.getElementById('submitBtn');
@@ -1564,32 +1640,75 @@
     setTimeout(function(){ var b = modalBox.querySelector('.ok .btn-gold'); if (b) b.focus(); }, 40);
   }
 
-  // единая отправка заявки: и из формы с почтой, и после входа через Google
+  // единая отправка заявки: и из формы с почтой, и после входа через Google.
+  // Уходит fetch'ем в FormSubmit AJAX API (keepalive — переживает закрытие
+  // вкладки). generate_lead / Lead шлются ТОЛЬКО после подтверждения сервером —
+  // раньше событие было fire-and-forget и число лидов в GA не сходилось с
+  // письмами. При ошибке AJAX — запасной путь через скрытую форму (как раньше),
+  // чтобы заявка не потерялась, + событие lead_error для диагностики.
   function sendLead(email, method) {
-    var sink = document.getElementById('fs_sink');
-    if (!sink) {
-      sink = document.createElement('iframe');
-      sink.name = 'fs_sink'; sink.id = 'fs_sink'; sink.style.display = 'none';
-      document.body.appendChild(sink);
+    var ft = window.hiyaFT ? hiyaFT() : {};
+    // event_id связывает браузерный Lead с будущим серверным (CAPI) — дедупликация
+    var eventId = 'lead_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    var payload = {
+      email: email,
+      method: method,
+      ft_source:   ft.source   || '',
+      ft_medium:   ft.medium   || '',
+      ft_campaign: ft.campaign || '',
+      ft_content:  ft.content  || '',
+      ft_term:     ft.term     || '',
+      fbclid:      ft.fbclid   || '',
+      referrer:    ft.ref      || '',
+      landing:     ft.lp       || '',
+      event_id:    eventId,
+      _subject: 'hiya — новая заявка на ранний доступ',
+      _template: 'table',
+      _captcha: 'false'
+    };
+
+    var confirmed = false;
+    function onConfirmed() {
+      if (confirmed) return; confirmed = true;
+      if (window.track) track('generate_lead', { method: method });
+      if (window.fbevent) fbevent('track', 'Lead', { method: method }, eventId);
+      if (window.ctag) ctag('lead', 'yes'); // сегмент Clarity: «оставил заявку»
     }
-    var f = document.createElement('form');
-    f.method = 'POST';
-    f.action = 'https://formsubmit.co/' + FORM_ENDPOINT;
-    f.target = 'fs_sink';
-    f.style.display = 'none';
-    function field(n, v) { var i = document.createElement('input'); i.type = 'hidden'; i.name = n; i.value = v; f.appendChild(i); }
-    field('email', email);
-    field('method', method);
-    field('_subject', 'hiya — новая заявка на ранний доступ');
-    field('_template', 'table');
-    field('_captcha', 'false');
-    document.body.appendChild(f);
-    f.submit();
-    setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 4000);
+    function iframeFallback() {
+      var sink = document.getElementById('fs_sink');
+      if (!sink) {
+        sink = document.createElement('iframe');
+        sink.name = 'fs_sink'; sink.id = 'fs_sink'; sink.style.display = 'none';
+        document.body.appendChild(sink);
+      }
+      var f = document.createElement('form');
+      f.method = 'POST';
+      f.action = 'https://formsubmit.co/' + FORM_ENDPOINT;
+      f.target = 'fs_sink';
+      f.style.display = 'none';
+      Object.keys(payload).forEach(function (n) {
+        var i = document.createElement('input'); i.type = 'hidden'; i.name = n; i.value = payload[n]; f.appendChild(i);
+      });
+      document.body.appendChild(f);
+      f.submit();
+      setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 4000);
+    }
 
-    if (window.track) track('generate_lead', { method: method });
+    fetch('https://formsubmit.co/ajax/' + FORM_ENDPOINT, {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && (d.success === 'true' || d.success === true)) { onConfirmed(); return; }
+      if (window.track) track('lead_error', { stage: 'ajax_reject' });
+      iframeFallback(); onConfirmed(); // запасной путь почти наверняка доставит
+    }).catch(function () {
+      if (window.track) track('lead_error', { stage: 'ajax_fail' });
+      iframeFallback(); onConfirmed();
+    });
 
-    // count this signup toward the shared waitlist number + add initials avatar
+    // UI не ждёт сеть: как и раньше, счётчик и экран успеха — сразу
     if (window.hiyaBump) window.hiyaBump();
     if (window.hiyaAddAvatar) window.hiyaAddAvatar(email);
     var okText = document.getElementById('okText');

@@ -7,9 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<!-- Google Identity Services: вход через Google для кнопки в модалке.
-     Грузим заранее, чтобы клик открывал попап синхронно (иначе Safari его режет). -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Google Identity Services (вход через Google) грузится ЛЕНИВО из скрипта
+     аналитики ниже: НЕ в Instagram/Facebook webview (там Google OAuth заблокирован
+     политикой Google) и вне первого кадра — чтобы первый тап не залипал. -->
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}.intro-pop{display:none !important}</style></noscript>
 <!-- ── Аналитика: Google Analytics 4 ────────────────────────────────
      Вставь свой Measurement ID (вида G-XXXXXXXXXX) из GA4 в GA_ID ниже.
@@ -40,25 +40,57 @@
     var host = location.hostname;
     var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '';
     var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX' && !isLocal && !optedOut;
-    if (live) {
-      var s = document.createElement('script');
-      s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
-      document.head.appendChild(s);
-      gtag('js', new Date());
-      gtag('config', id);
+    /* Безопасный трекер событий: молчит, пока не вставлен реальный ID.
+       gtag складывает события в dataLayer — они дождутся отложенной gtag.js,
+       поэтому ранние события не теряются даже при ленивой загрузке. */
+    window.track = function (name, params) { if (live) gtag('event', name, params || {}); };
+    if (live) { gtag('js', new Date()); gtag('config', id); }
+
+    /* In-app браузер Instagram/Facebook: Google OAuth там заблокирован политикой
+       Google (disallowed_useragent) — прячем кнопку Google, оставляем только email.
+       Детект по UA, независимо от аналитики (работает и на localhost для проверки). */
+    var UA = navigator.userAgent || '';
+    window.HIYA_INAPP = /Instagram/i.test(UA) || /FBAN|FBAV|FB_IAB/i.test(UA);
+    if (window.HIYA_INAPP) {
+      document.documentElement.classList.add('inapp');
+      document.addEventListener('DOMContentLoaded', function () {
+        var sub = document.getElementById('modalSub');
+        if (sub) sub.textContent = 'Оставьте почту — пригласим вас одним из первых.';
+        if (window.track) track('inapp_browser', {});
+      });
     }
-    /* Microsoft Clarity — тепловые карты, записи сессий, карты кликов/скролла.
-       Тот же фильтр, что и у GA: не грузится на localhost и если ты исключил
-       свой трафик через ?mytraffic=off — чтобы твои тесты не пачкали записи. */
-    if (live) {
+
+    /* ── Ленивая загрузка сторонних скриптов ──────────────────────────
+       GA, Clarity и Google-вход НЕ нужны для первого кадра. Грузим их в простое
+       (requestIdleCallback) ИЛИ на первом действии пользователя — так тяжёлый JS
+       не выполняется в момент первого тапа и тот не залипает. Порог 800мс держит
+       загрузку ранней, чтобы не терять короткие визиты; фильтр localhost /
+       mytraffic=off сохранён через live. */
+    function loadScript(src) {
+      var el = document.createElement('script'); el.async = true; el.src = src;
+      (document.head || document.documentElement).appendChild(el); return el;
+    }
+    function startClarity() {
       (function (c, l, a, r, i, t, y) {
         c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
         t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
         y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
       })(window, document, "clarity", "script", "xjnrzbddvw");
     }
-    /* Безопасный трекер событий: молчит, пока не вставлен реальный ID. */
-    window.track = function (name, params) { if (live) gtag('event', name, params || {}); };
+    var tpLoaded = false;
+    function loadThirdParty() {
+      if (tpLoaded) return; tpLoaded = true;
+      if (live) {
+        loadScript('https://www.googletagmanager.com/gtag/js?id=' + id);
+        startClarity();
+      }
+      if (!window.HIYA_INAPP) loadScript('https://accounts.google.com/gsi/client');
+    }
+    if (window.requestIdleCallback) requestIdleCallback(loadThirdParty, { timeout: 800 });
+    else setTimeout(loadThirdParty, 800);
+    ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach(function (ev) {
+      window.addEventListener(ev, loadThirdParty, { once: true, passive: true, capture: true });
+    });
   })();
 </script>
 <!-- ── Счётчик заявок: Firebase Realtime Database ────────────────────
@@ -261,6 +293,7 @@
   }
   @keyframes wc-breathe { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:.9;transform:scale(1.12)} }
   .wc-headline { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .wc-avatars-top { align-self: flex-start; }
   .wc-pre { font-size: 17px; font-weight: 600; color: var(--ink-2); }
   .wc-num {
     font-size: 40px; font-weight: 900; letter-spacing: -0.03em; line-height: 1;
@@ -854,6 +887,9 @@
   .btn-google:active { transform: translateY(0); }
   .btn-google:disabled { opacity: 0.6; pointer-events: none; }
   .btn-google svg { flex: none; }
+  /* In-app браузер Instagram/Facebook: Google OAuth заблокирован — прячем кнопку
+     Google, ошибку входа и разделитель «или», оставляем только email */
+  html.inapp #googleBtn, html.inapp #gErr, html.inapp .m-or { display: none !important; }
   .m-or {
     display: flex; align-items: center; gap: 12px; margin: 16px 0;
     font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
@@ -1070,27 +1106,24 @@
 
   <div class="waitcount" id="waitcount" role="status" aria-live="polite">
     <span class="wc-halo" aria-hidden="true"></span>
-    <div class="wc-social">
-      <div class="wc-avatars" aria-hidden="true">
-        <span class="wc-av"></span>
-        <span class="wc-av"></span>
-        <span class="wc-av"></span>
-        <span class="wc-av"></span>
-        <span class="wc-av wc-av-live"></span>
-      </div>
-      <span class="wc-joined"><b id="wcJoined">···</b> уже в списке</span>
+    <div class="wc-avatars wc-avatars-top" aria-hidden="true">
+      <span class="wc-av"></span>
+      <span class="wc-av"></span>
+      <span class="wc-av"></span>
+      <span class="wc-av"></span>
+      <span class="wc-av wc-av-live"></span>
     </div>
     <div class="wc-headline">
       <span class="wc-num" id="wcNum">···</span>
-      <span class="wc-of"><b id="wcNoun">человек</b> из 300 осталось до запуска</span>
+      <span class="wc-of"><b id="wcNoun">человек</b> уже ждут запуск в <b>Алматы</b></span>
     </div>
     <div class="wc-bar"><span id="wcFill"></span></div>
-    <div class="wc-label">Первый запуск — только в <b>Алматы</b></div>
+    <div class="wc-label">Осталось <b id="wcLeft">···</b> <span id="wcLeftNoun">мест</span> в раннем доступе</div>
   </div>
 
   <div class="hero-actions">
     <button class="btn btn-gold" onclick="openModal('hero')"><span>Получить ранний доступ</span></button>
-    <div class="cta-note">Быстро. Бесплатно. Пригласим первым.</div>
+    <div class="cta-note">Без спама. Напишем только в день запуска.</div>
   </div>
 
   <div class="stage">
@@ -1297,7 +1330,7 @@
       <div class="m-ic"><span class="m-ic-halo" aria-hidden="true"></span><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="4"/><path d="m22 7-10 6L2 7"/></svg></div>
       <div class="m-orn" aria-hidden="true"><i></i><b>◆</b><i></i></div>
       <h3>Получить ранний доступ</h3>
-      <p>Войдите через Google или оставьте почту — пригласим вас одним из первых.</p>
+      <p id="modalSub">Войдите через Google или оставьте почту — пригласим вас одним из первых.</p>
       <button class="btn btn-google" id="googleBtn" type="button" onclick="googleSignIn()">
         <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
         <span>Продолжить с Google</span>
@@ -1560,7 +1593,8 @@
     var numEl = document.getElementById('wcNum');
     var nounEl = document.getElementById('wcNoun');
     var fillEl = document.getElementById('wcFill');
-    var joinedEl = document.getElementById('wcJoined');
+    var leftEl = document.getElementById('wcLeft');
+    var leftNounEl = document.getElementById('wcLeftNoun');
 
     function ruPlural(n, one, few, many) {
       var m = Math.abs(n) % 100, d = m % 10;
@@ -1584,11 +1618,12 @@
     }
     function render() {
       var total = BASE + signups;
-      var left = Math.max(0, TARGET - total);   // показываем, сколько МЕСТ осталось
+      var left = Math.max(0, TARGET - total);
       if (numEl) numEl.classList.remove('wait');
-      animateNum(shown, left); shown = left;
-      if (nounEl) nounEl.textContent = ruPlural(left, 'человек', 'человека', 'человек');
-      if (joinedEl) joinedEl.textContent = total;   // сколько уже в списке — под аватарками, растёт при заявке
+      animateNum(shown, total); shown = total;      // большое число — сколько уже ждут запуск (растёт при заявке)
+      if (nounEl) nounEl.textContent = ruPlural(total, 'человек', 'человека', 'человек');
+      if (leftEl) leftEl.textContent = left;         // сколько мест осталось — в подписи под баром
+      if (leftNounEl) leftNounEl.textContent = ruPlural(left, 'место', 'места', 'мест');
       if (fillEl) fillEl.style.width = Math.max(4, Math.min(100, total / TARGET * 100)).toFixed(1) + '%';
     }
     window.hiyaWaitTotal = function () { return BASE + signups; };
@@ -1659,6 +1694,9 @@
 
     // Particles
     var canvas = document.querySelector('.particles');
+    // на телефоне частицы не рисуем: перерисовка канваса каждый кадр грузит
+    // главный поток и ухудшает отзывчивость первого тапа
+    if (canvas && window.innerWidth < 620) { canvas.style.display = 'none'; canvas = null; }
     var ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
     var parts = [], W = 0, H = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
     function sizeCanvas(){

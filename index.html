@@ -1053,7 +1053,14 @@
       background: linear-gradient(180deg, rgba(10,8,6,0.92) 0%, rgba(10,8,6,0.5) 62%, transparent 100%);
       border-bottom: none; backdrop-filter: none; -webkit-backdrop-filter: none;
     }
-    nav .btn-gold { display: none; }
+    /* кнопка в слим-хедере появляется, только когда hero-CTA ушла за экран
+       (класс cta-show вешает JS); скрыта без display:none — для плавности */
+    nav .btn-gold {
+      font-size: 13px; padding: 8px 15px;
+      opacity: 0; transform: translateY(-8px); pointer-events: none;
+      transition: opacity .3s ease, transform .3s cubic-bezier(.2,.7,.2,1);
+    }
+    nav.cta-show .btn-gold { opacity: 1; transform: none; pointer-events: auto; }
     .nav-inner { height: 46px; }
     .brand { font-size: 19px; }
 
@@ -1914,6 +1921,25 @@
     }, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
     els.forEach(function(el){ io.observe(el); });
     setTimeout(function(){ document.querySelectorAll('.reveal:not(.in)').forEach(function(el){ el.classList.add('in'); }); }, 1600);
+  })();
+
+  // ── Кнопка в шапке ↔ hero-CTA: на мобиле кнопка хедера видна ровно
+  //    тогда, когда первая CTA-кнопка ушла за экран (класс nav.cta-show;
+  //    на десктопе класс безвреден — там кнопка видна всегда).
+  (function(){
+    var heroBtn = document.querySelector('.hero-actions .btn-gold');
+    var nav = document.querySelector('nav');
+    if (!heroBtn || !nav) return;
+    var ticking = false;
+    function check(){
+      ticking = false;
+      var r = heroBtn.getBoundingClientRect();
+      nav.classList.toggle('cta-show', r.bottom < 48); // 48 ≈ высота слим-хедера: «ушла» = скрылась и под ним
+    }
+    function onScrollOrResize(){ if (!ticking) { ticking = true; requestAnimationFrame(check); } }
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize, { passive: true });
+    check();
   })();
 
   // ── Кукольный театр «Три простых шага» ───────────────────────────

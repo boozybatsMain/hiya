@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>hiya — знакомства с теми, кто сейчас в том же заведении</title>
+<!-- Ранняя заглушка CTA. Основной скрипт с openModal/closeModal лежит в самом
+     низу страницы, поэтому на медленном in-app браузере (Instagram) между
+     появлением кнопки «Получить ранний доступ» и загрузкой этого скрипта было
+     «мёртвое окно» ~1–4с: тап по CTA падал с `openModal is not defined` и
+     визуально не делал НИЧЕГО (замерено). Определяем функции сразу: до
+     готовности формы ранний тап ЗАПОМИНАЕТСЯ, а основной скрипт открывает
+     модалку, как только готов (см. «долить отложенный тап» ниже). -->
+<script>
+  window.__pendingModal = null;
+  window.openModal = function (source) { window.__pendingModal = source || 'unknown'; };
+  window.closeModal = function () { window.__pendingModal = null; };
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Шрифт грузим НЕ блокируя первую отрисовку: media="print" снимает
@@ -1687,6 +1699,14 @@
     modal.classList.remove('open');
     document.body.style.overflow = '';
     if (window._modalReturn && window._modalReturn.focus) window._modalReturn.focus({ preventScroll: true });
+  }
+
+  // Долить отложенный тап по CTA, случившийся до загрузки этого скрипта
+  // (ранняя заглушка openModal в <head>). Функции выше уже перекрыли заглушку
+  // на window; открываем модалку тем же источником, что запомнил ранний тап.
+  if (window.__pendingModal !== null) {
+    var _pend = window.__pendingModal; window.__pendingModal = null;
+    openModal(_pend);
   }
 
   // ── Early-access email capture → FormSubmit (no backend) ──────────

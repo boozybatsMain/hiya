@@ -15,6 +15,18 @@
   window.__pendingModal = null;
   window.openModal = function (source) { window.__pendingModal = source || 'unknown'; };
   window.closeModal = function () { window.__pendingModal = null; };
+  // Высота первого экрана: замораживаем стартовый innerHeight в --hero-vh (px).
+  // Даже svh нестабилен в webview Instagram/Facebook: их нижняя панель («ушко»)
+  // прячется при скролле, вьюпорт растёт — 100svh пересчитывался, hero и телефон
+  // прыгали в размере. Фиксируем высоту «с ушком» (какой она была на загрузке).
+  // Пересчёт ТОЛЬКО при смене ширины (поворот экрана) — не на скролл-ресайзах
+  // и не при открытии клавиатуры, иначе вернутся лаги (см. комментарий у .hero).
+  (function () {
+    var lastW = 0;
+    function set() { lastW = window.innerWidth; document.documentElement.style.setProperty('--hero-vh', window.innerHeight + 'px'); }
+    set();
+    window.addEventListener('resize', function () { if (window.innerWidth !== lastW) set(); });
+  })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -254,6 +266,9 @@
   }
   .site-bg-photo {
     position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    /* широкий кадр — та же терраса, что на мобилке (дорисованные края);
+       жизнь распределена по всей ширине, держим центр */
+    object-position: 50% 50%;
     opacity: 0.52; filter: brightness(0.62) saturate(1.12) blur(0.5px);
     -webkit-mask: radial-gradient(150% 118% at 50% 60%, #000 44%, transparent 100%);
             mask: radial-gradient(150% 118% at 50% 60%, #000 44%, transparent 100%);
@@ -265,6 +280,34 @@
 
   /* drifting particles — a touch of life */
   .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  /* Мобильная версия партиклов — ЧИСТЫЙ CSS, без канваса: canvas перерисовывался
+     каждый кадр на главном потоке и душил отзывчивость первого тапа (поэтому его
+     на <620px отключает JS). Тут анимируются только transform и opacity — этим
+     занимается композитор, главный поток свободен. На десктопе скрыто: там канвас. */
+  .pmob { display: none; }
+  @media (max-width: 620px) {
+    .pmob { display: block; position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .pmob span {
+      position: absolute; bottom: -3vh; border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(244,226,188,0.85), rgba(231,198,145,0.3) 60%, transparent 75%);
+      animation: pmob-rise linear infinite;
+    }
+    .pmob span:nth-child(1) { left: 9%;  width: 3px; height: 3px; animation-duration: 17s; animation-delay: -3s; }
+    .pmob span:nth-child(2) { left: 23%; width: 2px; height: 2px; animation-duration: 23s; animation-delay: -11s; }
+    .pmob span:nth-child(3) { left: 38%; width: 4px; height: 4px; animation-duration: 15s; animation-delay: -7s; }
+    .pmob span:nth-child(4) { left: 55%; width: 2px; height: 2px; animation-duration: 25s; animation-delay: -18s; }
+    .pmob span:nth-child(5) { left: 69%; width: 3px; height: 3px; animation-duration: 19s; animation-delay: -5s; }
+    .pmob span:nth-child(6) { left: 82%; width: 2px; height: 2px; animation-duration: 22s; animation-delay: -14s; }
+    .pmob span:nth-child(7) { left: 93%; width: 4px; height: 4px; animation-duration: 16s; animation-delay: -9s; }
+  }
+  @keyframes pmob-rise {
+    0%   { transform: translateY(0); opacity: 0; }
+    8%   { opacity: .6; }
+    45%  { opacity: .3; }
+    85%  { opacity: .55; }
+    100% { transform: translateY(-108vh); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pmob { display: none !important; } }
 
   .grain {
     position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0.035;
@@ -334,50 +377,75 @@
        заполнен ровно так же, а после скрытия строки снизу может выглянуть
        ~60px следующего блока — осознанный размен плавности на «выглядывание». */
     min-height: 100svh;
+    /* --hero-vh — стартовый innerHeight, замороженный ранним скриптом в <head>:
+       в webview Instagram/Facebook даже svh пересчитывается, когда их нижняя
+       панель прячется при скролле. Var меняется только при повороте экрана,
+       так что перелэйаутов на скролле нет. 100svh выше — фолбэк без JS. */
+    min-height: var(--hero-vh, 100svh);
     padding-top: 96px; padding-bottom: 40px;
     display: grid; grid-template-columns: 1.02fr 0.98fr; align-items: center; gap: 56px;
     grid-template-areas: "head phone" "count phone" "cta phone";
     align-content: center;
   }
-  .hero-head { grid-area: head; }
+  .hero-head { grid-area: head; position: relative; z-index: 1; }
+  /* мягкое пятно-затемнение под заголовком: два вложенных радиала без чётких
+     границ (шум поверх даёт глобальный .grain) — текст отделяется от фото-фона */
+  .hero-head::before {
+    content: ""; position: absolute; z-index: -1; pointer-events: none;
+    inset: -16% -22% -22% -26%;
+    background:
+      radial-gradient(58% 52% at 40% 40%, rgba(8,6,4,0.52), transparent 74%),
+      radial-gradient(85% 75% at 52% 58%, rgba(8,6,4,0.36), transparent 82%);
+  }
   .waitcount { grid-area: count; }
   .stage { grid-area: phone; }
   .hero-actions { grid-area: cta; }
 
   .ambient { position: absolute; inset: -80px -200px -80px 0; z-index: 0; pointer-events: none; overflow: hidden; }
-  .ambient .glow { position: absolute; border-radius: 50%; filter: blur(60px); will-change: transform; }
-  .g1 { top: 2%; right: 4%; width: 480px; height: 480px; background: radial-gradient(closest-side, rgba(231,198,145,0.2), transparent 70%); }
-  .g2 { bottom: 0%; right: 28%; width: 380px; height: 380px; background: radial-gradient(closest-side, rgba(211,168,98,0.14), transparent 70%); }
+  /* .glow g1/g2 удалены — см. комментарий в разметке .ambient */
+  /* Боке-параллакс: ДВА слоя глубины, кружки спаунит JS (Motion-блок) рандомно.
+     Ближний слой (крупнее, 12–18px) отстаёт от контента слабо (data-speed 0.12),
+     дальний (мельче, 3–8px) — сильнее (0.26), фото-фон (fixed) — целиком.
+     Так скорость честно убывает с глубиной, и параллакс читается.
+     Transform получает ВЕСЬ слой (2 элемента), не каждый кружок; сами кружки
+     только мерцают opacity — это композитор, главному потоку дёшево.
+     (Раньше тут было 6 статичных кружков b1–b6 — на фото-фоне выглядели
+     прилипшими к экрану пятнами.) */
   .bokeh { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .fx-near, .fx-mid { position: absolute; inset: 0; will-change: transform; }
   .bokeh span {
-    position: absolute; border-radius: 50%; will-change: transform;
-    background: radial-gradient(closest-side, rgba(244,226,188,0.6), rgba(231,198,145,0.14) 60%, transparent 72%); filter: blur(1px);
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(244,226,188,0.7), rgba(231,198,145,0.16) 60%, transparent 72%);
+    animation: bk-tw ease-in-out infinite alternate;
   }
-  .b1 { width: 26px; height: 26px; top: 22%; right: 12%; opacity: .5; }
-  .b2 { width: 14px; height: 14px; top: 58%; right: 44%; opacity: .45; filter: blur(2px); }
-  .b3 { width: 44px; height: 44px; top: 76%; right: 8%; opacity: .3; filter: blur(3px); }
-  .b4 { width: 10px; height: 10px; top: 16%; right: 38%; opacity: .5; }
-  .b5 { width: 20px; height: 20px; top: 88%; right: 30%; opacity: .35; filter: blur(2px); }
-  .b6 { width: 8px; height: 8px; top: 40%; right: 2%; opacity: .55; }
+  @keyframes bk-tw {
+    from { opacity: calc(var(--a, 0.3) * 0.45); }
+    to   { opacity: var(--a, 0.3); }
+  }
 
   h1 {
     /* новый H1 длиннее прежнего слогана — размер меньше, чтобы на десктопе
        держался в 3 строки и не выталкивал счётчик с CTA за первый экран */
     font-size: clamp(36px, 3.9vw, 52px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.06; margin-bottom: 18px;
+    text-shadow: 0 2px 18px rgba(8,6,4,0.55); /* отсечка от живого фото-фона */
   }
   h1 .em {
     background: linear-gradient(180deg, #f6e6c4 0%, #e9cd9a 100%);
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25));
   }
-  .lede { font-size: 20px; color: var(--ink-2); max-width: 460px; margin-bottom: 4px; line-height: 1.45; }
+  .lede { font-size: 20px; color: var(--ink-2); max-width: 460px; margin-bottom: 4px; line-height: 1.45; text-shadow: 0 1px 12px rgba(8,6,4,0.6); }
 
   /* ── Prominent live waitlist counter ── */
   .waitcount {
     position: relative; overflow: hidden;
     display: flex; flex-direction: column; gap: 13px;
     max-width: 440px; margin: 4px 0 4px; padding: 20px 22px;
-    background: linear-gradient(158deg, rgba(231,198,145,0.13) 0%, rgba(231,198,145,0.03) 100%);
+    /* под золотым градиентом — плотная тёмная подложка: на живом фото-фоне
+       полупрозрачная плашка тонула и текст терял контраст */
+    background:
+      linear-gradient(158deg, rgba(231,198,145,0.13) 0%, rgba(231,198,145,0.03) 100%),
+      linear-gradient(180deg, rgba(20,15,9,0.88), rgba(16,12,7,0.9));
     border: 1px solid var(--line-2); border-radius: 22px;
     box-shadow: 0 18px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(244,226,188,0.18);
   }
@@ -467,6 +535,7 @@
     position: absolute; z-index: 2; left: 50%;
     top: calc(100vh - 32px);   /* фолбэк для браузеров без svh */
     top: calc(100svh - 32px);  /* высота стрелок 24px + зазор 8px */
+    top: calc(var(--hero-vh, 100svh) - 32px);  /* низ ЗАМОРОЖЕННОГО первого экрана */
     transform: translateX(-50%);
     display: flex; flex-direction: column; align-items: center;
     padding: 5px 16px; border-radius: 100px;
@@ -504,17 +573,10 @@
     perspective: calc(1650 * var(--u)); perspective-origin: 50% 42%;
     -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
-  /* warm cafe bokeh behind the phone */
-  .ip3d-bokeh {
-    position: absolute; z-index: 0; inset: -14% -30% -8% -12%; pointer-events: none;
-    background:
-      radial-gradient(38px 38px at 80% 24%, rgba(244,226,188,0.44), transparent 62%),
-      radial-gradient(66px 66px at 93% 55%, rgba(217,177,106,0.3), transparent 66%),
-      radial-gradient(30px 30px at 74% 80%, rgba(231,198,145,0.34), transparent 60%),
-      radial-gradient(20px 20px at 60% 12%, rgba(244,226,188,0.3), transparent 60%),
-      radial-gradient(closest-side, rgba(231,198,145,0.15), transparent 74%);
-    filter: blur(10px);
-  }
+  /* .ip3d-bokeh удалён: фейковое «боке за телефоном» из статичных радиалов
+     (38/66/30/20px на фиксированных позициях, inset -14% -30%) на фото-фоне
+     выглядело как два мутных пятна, прилипших справа от телефона. Настоящее
+     боке теперь даёт сама фотография. Div из разметки тоже удалён. */
   .ip3d-shadow {
     position: absolute; z-index: 1; left: 49%; bottom: 0%; width: 80%; height: 74px;
     transform: translateX(-50%) skewX(-12deg);
@@ -923,27 +985,27 @@
   }
   .th-actor {
     position: absolute; z-index: 3; bottom: -2%; pointer-events: none; will-change: transform;
-    transform: translateY(112%); transition: transform 1s cubic-bezier(.3,1.25,.4,1);
+    transform: translateY(112%); transition: transform .5s cubic-bezier(.3,1.25,.4,1);
   }
   .th-actor.in { transform: translateY(0); }
   .th-man { left: 8%; width: 32%; height: 64%; }
-  .th-man.close { z-index: 4; transform: translateY(0) translateX(81%); transition: transform 1.5s cubic-bezier(.5,.05,.3,1); }
+  .th-man.close { z-index: 4; transform: translateY(0) translateX(81%); transition: transform .8s cubic-bezier(.5,.05,.3,1); }
   .th-woman { right: 10%; width: 24%; height: 51%; }
-  .th-phone { left: 28%; width: 21%; height: 56%; z-index: 4; transition-duration: .8s; }
+  .th-phone { left: 28%; width: 21%; height: 56%; z-index: 4; transition-duration: .4s; }
   .th-rock, .th-pop { position: relative; width: 100%; height: 100%; }
   .th-rock { transform-origin: 50% 100%; animation: th-rock 3.6s ease-in-out infinite alternate; }
   .th-woman .th-rock { animation-duration: 4.3s; }
   .th-phone .th-rock { animation-duration: 3.1s; }
   .th-pop { transform-origin: 50% 100%; }
-  .th-pop.pop { animation: th-pop .5s cubic-bezier(.3,1.6,.4,1); }
+  .th-pop.pop { animation: th-pop .4s cubic-bezier(.3,1.6,.4,1); }
   .th-pose { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 100%; width: auto; opacity: 0; }
   .th-actor[data-show="1"] .th-pose[data-pose="1"], .th-actor[data-show="2"] .th-pose[data-pose="2"],
   .th-actor[data-show="3"] .th-pose[data-pose="3"], .th-actor[data-show="4"] .th-pose[data-pose="4"] { opacity: 1; }
   .th-phone img { position: absolute; bottom: 0; left: 50%; height: 100%; width: auto; transform: translateX(-50%) rotate(-4deg); transform-origin: 50% 100%; }
   .th-tap { position: absolute; z-index: 6; left: 41%; top: 44%; width: 22%; aspect-ratio: 1 / 1; border-radius: 50%; border: 3px solid var(--gold); opacity: 0; pointer-events: none; }
-  .tapping .th-tap { animation: th-ring .75s ease-out 2; }
+  .tapping .th-tap { animation: th-ring .5s ease-out 2; }
   .th-heart { position: absolute; z-index: 5; left: 34%; bottom: 50%; width: 7%; opacity: 0; will-change: transform; }
-  .th-heart.fly { animation: th-fly 1.2s cubic-bezier(.35,.1,.35,1) forwards; }
+  .th-heart.fly { animation: th-fly .8s cubic-bezier(.35,.1,.35,1) forwards; }
   .th-heart.rest { left: 57%; bottom: 57%; opacity: 1; transform: none; animation: th-bob 2.4s ease-in-out infinite alternate; }
   .th-replay {
     position: absolute; z-index: 7; right: 14px; top: 14px; width: 40px; height: 40px; border-radius: 50%;
@@ -1143,6 +1205,7 @@
     .th-rock, .th-pop.pop, .th-heart, .tapping .th-tap { animation: none !important; }
     .wc-halo, .wc-bar > span::after, .pcard-like, .ms-heart, .wc-av-live::after, .cta-heart { animation: none !important; }
     .m-spark, .m-ic-halo { animation: none !important; }
+    .bokeh span { animation: none !important; opacity: calc(var(--a, 0.3) * 0.7); }
     .ipop-btn, .ipop-btn::after, .ipop-card { animation: none !important; }
     .tap-hint { display: none; }
     /* стрелки скролла: статичные, но видимые — подсказка остаётся */
@@ -1154,6 +1217,9 @@
   /* ── Responsive: tablet ───── */
   @media (max-width: 940px) {
     .wrap { padding: 0 22px; }
+    /* заголовок тут во всю ширину: широкие отрицательные inset'ы пятна-затемнения
+       вылезали за правый край вьюпорта и создавали горизонтальный скролл */
+    .hero-head::before { inset: -12% -4% -16% -4%; }
     .hero {
       grid-template-columns: 1fr; gap: 16px; padding-top: 88px; padding-bottom: 22px;
       grid-template-areas: "head" "phone" "count" "cta"; justify-items: center; text-align: center;
@@ -1180,6 +1246,7 @@
       padding: 4px 14px;
       top: calc(100vh - 24px);
       top: calc(100svh - 24px);  /* высота стрелок 22px + зазор 2px */
+      top: calc(var(--hero-vh, 100svh) - 24px);
     }
   }
 
@@ -1202,14 +1269,14 @@
     .nav-inner { height: 46px; }
     .brand { font-size: 19px; }
 
-    /* фон: показываем именно чашку кофе (она слева на фото) и меньше топим в темноту */
+    /* фон: вертикальный кадр (bg-cafe-tall) — жизнь по краям, центр под мокапом */
     .site-bg-photo {
-      object-position: 18% 62%; opacity: 0.62;
+      object-position: 50% 50%; opacity: 0.62;
       filter: brightness(0.72) saturate(1.15) blur(0.5px);
       -webkit-mask: radial-gradient(170% 130% at 50% 55%, #000 55%, transparent 100%);
               mask: radial-gradient(170% 130% at 50% 55%, #000 55%, transparent 100%);
     }
-    .site-bg::after { background: linear-gradient(180deg, rgba(10,8,6,0.34) 0%, rgba(10,8,6,0.16) 34%, rgba(10,8,6,0.36) 66%, var(--bg) 100%); }
+    .site-bg::after { background: linear-gradient(180deg, rgba(10,8,6,0.5) 0%, rgba(10,8,6,0.26) 34%, rgba(10,8,6,0.5) 66%, var(--bg) 100%); }
 
     /* попап на маленьком телефоне рисуем крупнее его собственного масштаба */
     .intro-pop { --pu: calc(var(--u) * 1.35); }
@@ -1223,10 +1290,10 @@
        телефон считается от 100svh минус примерная высота остального.
        В современных браузерах это правило ПЕРЕБИВАЕТСЯ container query
        ниже (телефон занимает реально измеренный остаток — без магии). */
-    .ip3d-scene { --ip3d-w: clamp(132px, min(calc((100svh - 372px) / 2.05), 60vw), 236px); }
-    /* Высоту первого экрана держит min-height:100svh из базового правила:
-       на загрузке экран = видимой высоте (адресная строка видна); при её
-       скрытии высота НЕ пересчитывается (иначе лаги — см. комментарий в .hero).
+    .ip3d-scene { --ip3d-w: clamp(132px, min(calc((var(--hero-vh, 100svh) - 372px) / 2.05), 60vw), 236px); }
+    /* Высоту первого экрана держит min-height:var(--hero-vh,100svh) из базового
+       правила: на загрузке экран = видимой высоте (адресная строка/«ушко» видны);
+       при их скрытии высота НЕ пересчитывается (иначе лаги — см. коммент в .hero).
        Строка телефона (grid-area phone) получает 1fr — весь остаток высоты,
        и телефон вырастает ровно под него (см. @supports-блок ниже).
        (Раньше здесь стоял min-height:0 — он схлопывал экран по контенту и
@@ -1316,7 +1383,7 @@
     .wc-label { font-size: 11px; }
     .hero-actions .btn-gold { padding: 11px 18px; font-size: 13.5px; }
     .hero-actions .cta-note { display: none; }
-    .ip3d-scene { --ip3d-w: clamp(118px, min(calc((100svh - 278px) / 2.05), 60vw), 236px); }
+    .ip3d-scene { --ip3d-w: clamp(118px, min(calc((var(--hero-vh, 100svh) - 278px) / 2.05), 60vw), 236px); }
   }
 
   /* Современные браузеры (iOS 16+, Chrome 105+): телефон занимает РЕАЛЬНО
@@ -1341,9 +1408,17 @@
 <div class="site-bg" aria-hidden="true">
   <!-- Декоративный фон: грузим ПОСЛЕДНИМ (lazy + low) — он не нужен для
        понимания страницы, под ним и так тёмная подложка. Контент важнее. -->
-  <img class="site-bg-photo" src="assets/bg-cafe.webp" alt="" loading="lazy" fetchpriority="low" decoding="async" onerror="this.remove()">
+  <!-- Два кадра одной сцены: телефонам — вертикальный (жизнь по краям от
+       мокапа), остальным — широкий (пара в просвете между текстом и телефоном).
+       Браузер качает только один из них. -->
+  <picture>
+    <source media="(max-width: 560px)" srcset="assets/bg-cafe-tall.webp">
+    <img class="site-bg-photo" src="assets/bg-cafe-wide.webp" alt="" loading="lazy" fetchpriority="low" decoding="async" onerror="this.parentNode.remove()">
+  </picture>
 </div>
 <canvas class="particles" aria-hidden="true"></canvas>
+<!-- Мобильные партиклы: чистый CSS вместо канваса (см. стили .pmob) -->
+<div class="pmob" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
 <div class="grain"></div>
 
 <!-- reusable silhouette placeholder -->
@@ -1351,7 +1426,8 @@
 
 <nav>
   <div class="wrap nav-inner">
-    <div class="brand" role="button" tabindex="0" aria-label="Открыть форму раннего доступа" onclick="openModal('logo_top')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">hiya.</div>
+    <!-- Логотип НЕ открывает модалку: люди ждут от него «на главную» — скроллим к началу -->
+    <div class="brand" role="button" tabindex="0" aria-label="К началу страницы" onclick="if(window.track)track('logo_to_top');window.scrollTo({top:0,behavior:'smooth'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">hiya.</div>
     <div class="nav-right">
       <span class="pill-city">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -1365,17 +1441,17 @@
 <!-- ── Hero / first screen ─────────────────────────────── -->
 <header class="hero wrap">
   <div class="ambient">
-    <div class="glow g1" data-speed="-0.06"></div>
-    <div class="glow g2" data-speed="0.08"></div>
+    <!-- Свечения .glow g1/g2 удалены: на фото-фоне эти два огромных блюр-пятна
+         (480/380px) выглядели как мутные кляксы, прилипшие к экрану справа.
+         Тёплую дымку теперь даёт сама фотография. -->
+    <!-- слои и кружки создаёт JS (Motion-блок): рандомный спаун, два слоя глубины -->
     <div class="bokeh">
-      <span class="b1" data-speed="-0.16"></span><span class="b2" data-speed="0.12"></span><span class="b3" data-speed="-0.08"></span>
-      <span class="b4" data-speed="0.14"></span><span class="b5" data-speed="-0.1"></span><span class="b6" data-speed="0.09"></span>
     </div>
   </div>
 
   <div class="hero-head">
     <h1>Заходишь в кафе —<br><span class="em">и видишь, кто здесь готов познакомиться</span></h1>
-    <p class="lede">Сначала взаимный лайк — никаких подходов вслепую и неловких отказов.</p>
+    <p class="lede">Сначала взаимный лайк — потом знакомство.</p>
   </div>
 
   <div class="waitcount" id="waitcount" role="status" aria-live="polite">
@@ -1402,7 +1478,6 @@
 
   <div class="stage">
     <div class="ip3d-scene">
-      <div class="ip3d-bokeh" aria-hidden="true"></div>
       <div class="ip3d-reflect" aria-hidden="true"></div>
       <div class="ip3d-shadow" aria-hidden="true"></div>
       <div class="tap-hint" id="tapHint" aria-hidden="true">👆🏼</div>
@@ -1635,7 +1710,7 @@
 
 <footer>
   <div class="wrap foot">
-    <div class="brand" role="button" tabindex="0" aria-label="Открыть форму раннего доступа" onclick="openModal('logo_bottom')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">hiya.</div>
+    <div class="brand" role="button" tabindex="0" aria-label="К началу страницы" onclick="if(window.track)track('logo_to_top');window.scrollTo({top:0,behavior:'smooth'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">hiya.</div>
     <div>© 2026 hiya</div>
   </div>
 </footer>
@@ -2039,13 +2114,14 @@
     }, 5000);
   })();
 
-  // ── Первый экран = во всю высоту вьюпорта — теперь это делает ТОЛЬКО CSS.
-  //    .hero { min-height: 100svh } тянется на видимую высоту при загрузке,
-  //    align-content:center центрирует контент, ширина телефона считается из
-  //    100svh в CSS-clamp (.ip3d-scene). Именно svh, не dvh: dvh анимируется
-  //    при скрытии адресной строки iOS и заставлял перелэйаучивать hero каждый
-  //    кадр — скролл лагал. Прежнюю JS-подгонку убрали намеренно: она мерила
-  //    clientHeight и конфликтовала с CSS. Не возвращать ни JS-ресайз, ни dvh.
+  // ── Первый экран = во всю высоту вьюпорта — это делает CSS через --hero-vh.
+  //    Ранний скрипт в <head> один раз замораживает innerHeight в --hero-vh (px);
+  //    .hero { min-height: var(--hero-vh, 100svh) } и clamp телефона считаются
+  //    от него. Замороженный px нужен из-за webview Instagram/Facebook: там даже
+  //    svh пересчитывается, когда их нижняя панель прячется при скролле. dvh и
+  //    реагирующий на каждый ресайз JS не возвращать: перелэйаут hero с тяжёлым
+  //    3D-мокапом на каждом кадре скролла лагал. Var обновляется ТОЛЬКО при
+  //    смене ширины (поворот экрана).
 
   // ── In-app match demo ────────────────────────────────────────────
   var pushTimers = [];
@@ -2306,7 +2382,16 @@
       warmPromise = Promise.all(Array.prototype.map.call(imgs, function(img){
         img.loading = 'eager'; // decode() у lazy-картинки — заставляем подгрузиться
         return (img.decode ? img.decode() : Promise.reject()).catch(function(){});
-      }));
+      })).then(function(){
+        // Кадры могли НЕ загрузиться (обрыв сети, data-saver в webview) — сцена
+        // тогда играет «вчёрную». Перезапрашиваем битые и снимаем кэш прогрева,
+        // чтобы следующий запуск (автоповтор через ~4с) попробовал снова.
+        var bad = Array.prototype.filter.call(imgs, function(i){ return i.complete && i.naturalWidth === 0; });
+        if (bad.length) {
+          bad.forEach(function(i){ var s = i.src; i.src = ''; i.src = s; });
+          warmPromise = null;
+        }
+      });
       return warmPromise;
     }
     function reset(){
@@ -2326,17 +2411,20 @@
       heart.classList.add('rest'); cap(3); replay.classList.add('show');
     }
     var everPlayed = false;
+    // Таймлайн сжат в 3 раза от исходных ~12с (люди не досматривали): спектакль ~4с.
+    // CSS-длительности движений (.th-actor, .th-phone, th-fly и т.д.) подогнаны
+    // под это расписание — менять шаги только вместе с ними.
     function runTimeline(){
-      later(300,   function(){ man.classList.add('in'); });                                  // он выползает
-      later(1500,  function(){ woman.classList.add('in'); });                                // вдалеке — она
-      later(2700,  function(){ pose(man, 2); cap(1); });                                     // увидел её!
-      later(3900,  function(){ pose(man, 3); phone.classList.add('in'); });                  // достал телефон
-      later(6100,  function(){ th.classList.add('tapping'); cap(2); });                      // лайк
-      later(7000,  function(){ heart.classList.add('fly'); });                               // сердечко летит
-      later(8100,  function(){ pose(woman, 2); });                                           // она обернулась
-      later(9500,  function(){ cap(3); phone.classList.remove('in'); th.classList.remove('tapping'); });
-      later(10300, function(){ pose(man, 4); man.classList.add('close'); pose(woman, 3); heart.classList.add('rest'); }); // подходит
-      later(11900, function(){ replay.classList.add('show'); playing = false; later(6500, play); }); // мягкий автоповтор
+      later(100,  function(){ man.classList.add('in'); });                                  // он выползает
+      later(500,  function(){ woman.classList.add('in'); });                                // вдалеке — она
+      later(900,  function(){ pose(man, 2); cap(1); });                                     // увидел её!
+      later(1300, function(){ pose(man, 3); phone.classList.add('in'); });                  // достал телефон
+      later(2050, function(){ th.classList.add('tapping'); cap(2); });                      // лайк
+      later(2350, function(){ heart.classList.add('fly'); });                               // сердечко летит
+      later(2700, function(){ pose(woman, 2); });                                           // она обернулась
+      later(3150, function(){ cap(3); phone.classList.remove('in'); th.classList.remove('tapping'); });
+      later(3450, function(){ pose(man, 4); man.classList.add('close'); pose(woman, 3); heart.classList.add('rest'); }); // подходит
+      later(4550, function(){ replay.classList.add('show'); playing = false; later(4000, play); }); // кнопка — когда он дошёл (3450 + .8s хода); мягкий автоповтор
     }
     function play(){
       reset(); th.classList.remove('idle'); playing = true; everPlayed = true;
@@ -2387,10 +2475,42 @@
   (function(){
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Боке-параллакс: спауним два слоя кружков ДО сбора pItems, чтобы их
+    // data-speed подхватился общим циклом. Подробности глубины — в CSS у .bokeh.
+    (function(){
+      var host = document.querySelector('.ambient .bokeh');
+      if (!host) return;
+      function spawnLayer(cls, speed, n, minR, maxR, blur, aMin, aMax){
+        var el = document.createElement('div');
+        el.className = cls;
+        el.setAttribute('data-speed', speed);
+        for (var i = 0; i < n; i++) {
+          var s = document.createElement('span');
+          var r = minR + Math.random() * (maxR - minR);
+          s.style.width = s.style.height = r.toFixed(1) + 'px';
+          s.style.left = (Math.random() * 100).toFixed(1) + '%';
+          s.style.top = (Math.random() * 140 - 6).toFixed(1) + '%';
+          s.style.filter = 'blur(' + blur + 'px)';
+          s.style.setProperty('--a', (aMin + Math.random() * (aMax - aMin)).toFixed(2));
+          s.style.animationDuration = (2.6 + Math.random() * 3.4).toFixed(1) + 's';
+          s.style.animationDelay = (-Math.random() * 6).toFixed(1) + 's';
+          el.appendChild(s);
+        }
+        host.appendChild(el);
+      }
+      var mob = window.innerWidth < 620; // на телефоне поверх уже летают .pmob — тут меньше
+      spawnLayer('fx-mid', '0.26', mob ? 8 : 14, 3, 8, 1, 0.2, 0.42);  // дальний: мелкие, отстают сильнее
+      spawnLayer('fx-near', '0.12', mob ? 4 : 7, 12, 18, 2, 0.1, 0.2); // ближний: крупнее, отстают слабее
+    })();
+
     // Parallax layers
     var pItems = Array.prototype.slice.call(document.querySelectorAll('[data-speed]')).map(function(el){
       return { el: el, s: parseFloat(el.getAttribute('data-speed')) };
     });
+    // Лёгкий параллакс фото-фона — ТОЛЬКО десктоп: на мобилке фон почти
+    // целиком закрыт UI, а лишний composited-слой бьёт по плавности скролла.
+    // scale(1.12) — запас по краям, чтобы сдвиг не обнажал подложку.
+    var bgPar = window.innerWidth > 900 ? document.querySelector('.site-bg-photo') : null;
 
     // Phone
     var phone = document.querySelector('.ip3d-stage3d');
@@ -2421,7 +2541,7 @@
           r: 0.6 + Math.random() * 2.1,
           vy: -(0.06 + Math.random() * 0.32),
           vx: (Math.random() - 0.5) * 0.16,
-          a: 0.05 + Math.random() * 0.32,
+          a: 0.1 + Math.random() * 0.38, /* ярче: на живом фото-фоне прежние тонули */
           tw: Math.random() * 6.28
         });
       }
@@ -2446,6 +2566,7 @@
       for (var i = 0; i < pItems.length; i++) {
         pItems[i].el.style.transform = 'translate3d(0,' + (scrollY * pItems[i].s).toFixed(2) + 'px,0)';
       }
+      if (bgPar) bgPar.style.transform = 'translate3d(0,' + (-scrollY * 0.04).toFixed(1) + 'px,0) scale(1.12)';
 
       // phone: gentle float + scroll-driven rotation (reveals depth)
       if (phone) {

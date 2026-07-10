@@ -6,7 +6,12 @@
 <title>hiya — не гадай, можно ли подойти познакомиться</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Шрифт грузим НЕ блокируя первую отрисовку: media="print" снимает
+     render-blocking, onload возвращает media на экран. С display=swap текст
+     виден системным шрифтом сразу, затем без прыжка меняется на Inter.
+     На медленном мобильном это ~0.8с к первому появлению текста. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"></noscript>
 <!-- Google Identity Services (вход через Google) грузится ЛЕНИВО из скрипта
      аналитики ниже: НЕ в Instagram/Facebook webview (там Google OAuth заблокирован
      политикой Google) и вне первого кадра — чтобы первый тап не залипал. -->
@@ -1315,7 +1320,7 @@
 </head>
 <body>
 <div class="site-bg" aria-hidden="true">
-  <img class="site-bg-photo" src="assets/bg-cafe.jpg" alt="" onerror="this.remove()">
+  <img class="site-bg-photo" src="assets/bg-cafe.jpg" alt="" fetchpriority="high" onerror="this.remove()">
 </div>
 <canvas class="particles" aria-hidden="true"></canvas>
 <div class="grain"></div>
@@ -2019,7 +2024,7 @@
       if (numEl) numEl.classList.add('wait');
       // если база не ответила за 3.5с — показываем базовое число, не висим
       var failsafe = setTimeout(function () { if (!settled) { settled = true; render(); } }, 3500);
-      (async function () {
+      var loadFirebase = async function () {
         try {
           var appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
           var dbMod  = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js');
@@ -2056,7 +2061,11 @@
           window.hiyaBump = function () { signups = lget() + 1; lset(signups); render(); };
           setupLocalAvatars();
         }
-      })();
+      };
+      // Firebase (SDK ~200КБ) не нужен для первого экрана — тянем его в простое,
+      // уступая канал загрузке верхней части. Базовое число покажет failsafe (3.5с),
+      // база догрузится и обновит счётчик. Форма сабмитится и без базы (guard в sendLead).
+      (window.requestIdleCallback || function (f) { setTimeout(f, 1200); })(loadFirebase, { timeout: 2500 });
     } else {
       // Local-only fallback until a Firebase config is pasted above.
       signups = lget(); render();
@@ -2208,11 +2217,20 @@
       if (!playing && r.top < innerHeight * 0.7 && r.bottom > innerHeight * 0.3) { play(); }
     }, { passive: true });
 
-    // прогреваем кадры в простое ПОСЛЕ полной загрузки — не мешаем первому экрану,
-    // но к моменту доскролла до сцены они уже декодированы и не моргают
-    var kickWarm = function(){ (window.requestIdleCallback || function(f){ setTimeout(f, 1200); })(warm); };
-    if (document.readyState === 'complete') kickWarm();
-    else window.addEventListener('load', kickWarm, { once: true });
+    // Прогрев кадров театра: НЕ ждём событие load (на медленном мобильном оно
+    // ~10с — всё это время кадры не греются, и при доскролле сцена моргает).
+    // Греем, как только готов фон hero (верхний экран уже отрисован) — тогда до
+    // сцены пользователь ещё листает несколько секунд, и кадры успевают
+    // догрузиться+декодироваться. Плюс страховка по таймеру, если фон подвис.
+    var kicked = false;
+    function kickWarm(){
+      if (kicked) return; kicked = true;
+      (window.requestIdleCallback || function(f){ setTimeout(f, 1); })(warm, { timeout: 2000 });
+    }
+    var heroBg = document.querySelector('.site-bg-photo');
+    if (!heroBg || heroBg.complete) kickWarm();                       // фон уже готов/кэш/быстрый канал
+    else heroBg.addEventListener('load', kickWarm, { once: true });    // ждём именно фон, не всю страницу
+    setTimeout(kickWarm, 6000);                                        // страховка: не тянем вечно
   })();
 
   // ── Motion: parallax + phone float/rotate + particles (one rAF loop)

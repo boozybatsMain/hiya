@@ -1008,27 +1008,27 @@
   }
   .th-actor {
     position: absolute; z-index: 3; bottom: -2%; pointer-events: none; will-change: transform;
-    transform: translateY(112%); transition: transform .5s cubic-bezier(.3,1.25,.4,1);
+    transform: translateY(112%); transition: transform .6s cubic-bezier(.3,1.25,.4,1);
   }
   .th-actor.in { transform: translateY(0); }
   .th-man { left: 8%; width: 32%; height: 64%; }
-  .th-man.close { z-index: 4; transform: translateY(0) translateX(81%); transition: transform .8s cubic-bezier(.5,.05,.3,1); }
+  .th-man.close { z-index: 4; transform: translateY(0) translateX(81%); transition: transform 1s cubic-bezier(.5,.05,.3,1); }
   .th-woman { right: 10%; width: 24%; height: 51%; }
-  .th-phone { left: 28%; width: 21%; height: 56%; z-index: 4; transition-duration: .4s; }
+  .th-phone { left: 28%; width: 21%; height: 56%; z-index: 4; transition-duration: .5s; }
   .th-rock, .th-pop { position: relative; width: 100%; height: 100%; }
   .th-rock { transform-origin: 50% 100%; animation: th-rock 3.6s ease-in-out infinite alternate; }
   .th-woman .th-rock { animation-duration: 4.3s; }
   .th-phone .th-rock { animation-duration: 3.1s; }
   .th-pop { transform-origin: 50% 100%; }
-  .th-pop.pop { animation: th-pop .4s cubic-bezier(.3,1.6,.4,1); }
+  .th-pop.pop { animation: th-pop .5s cubic-bezier(.3,1.6,.4,1); }
   .th-pose { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 100%; width: auto; opacity: 0; }
   .th-actor[data-show="1"] .th-pose[data-pose="1"], .th-actor[data-show="2"] .th-pose[data-pose="2"],
   .th-actor[data-show="3"] .th-pose[data-pose="3"], .th-actor[data-show="4"] .th-pose[data-pose="4"] { opacity: 1; }
   .th-phone img { position: absolute; bottom: 0; left: 50%; height: 100%; width: auto; transform: translateX(-50%) rotate(-4deg); transform-origin: 50% 100%; }
   .th-tap { position: absolute; z-index: 6; left: 41%; top: 44%; width: 22%; aspect-ratio: 1 / 1; border-radius: 50%; border: 3px solid var(--gold); opacity: 0; pointer-events: none; }
-  .tapping .th-tap { animation: th-ring .5s ease-out 2; }
+  .tapping .th-tap { animation: th-ring .6s ease-out 2; }
   .th-heart { position: absolute; z-index: 5; left: 34%; bottom: 50%; width: 7%; opacity: 0; will-change: transform; }
-  .th-heart.fly { animation: th-fly .8s cubic-bezier(.35,.1,.35,1) forwards; }
+  .th-heart.fly { animation: th-fly 1s cubic-bezier(.35,.1,.35,1) forwards; }
   .th-heart.rest { left: 57%; bottom: 57%; opacity: 1; transform: none; animation: th-bob 2.4s ease-in-out infinite alternate; }
   .th-replay {
     position: absolute; z-index: 7; right: 14px; top: 14px; width: 40px; height: 40px; border-radius: 50%;
@@ -2022,7 +2022,8 @@
   });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { if (document.getElementById('matchSheet').classList.contains('open')) { hideMatch(); return; } if (modal.classList.contains('open')) closeModal(); } });
 
-  // ── Закрытие модалки свайпом вверх/вниз ─────────────────────────────
+  // ── Закрытие модалки свайпом вниз (вверх — НЕ закрываем: это рефлекторный
+  //    жест «проскроллить», из-за него люди теряли форму — см. Clarity 10.07) ──
   // Грабли, из-за которых это обычно не взлетает (учтено):
   //  1) touchmove ОБЯЗАН быть passive:false, иначе preventDefault молча
   //     игнорируется и страница «резинится» под пальцем вместо жеста;
@@ -2440,20 +2441,20 @@
       heart.classList.add('rest'); cap(3); replay.classList.add('show');
     }
     var everPlayed = false;
-    // Таймлайн сжат в 3 раза от исходных ~12с (люди не досматривали): спектакль ~4с.
-    // CSS-длительности движений (.th-actor, .th-phone, th-fly и т.д.) подогнаны
-    // под это расписание — менять шаги только вместе с ними.
+    // Таймлайн: спектакль ~5с (исходные ~12с не досматривали; после проб
+    // остановились на скорости ×2.4). CSS-длительности движений (.th-actor,
+    // .th-phone, th-fly и т.д.) подогнаны — менять шаги только вместе с ними.
     function runTimeline(){
-      later(100,  function(){ man.classList.add('in'); });                                  // он выползает
-      later(500,  function(){ woman.classList.add('in'); });                                // вдалеке — она
-      later(900,  function(){ pose(man, 2); cap(1); });                                     // увидел её!
-      later(1300, function(){ pose(man, 3); phone.classList.add('in'); });                  // достал телефон
-      later(2050, function(){ th.classList.add('tapping'); cap(2); });                      // лайк
-      later(2350, function(){ heart.classList.add('fly'); });                               // сердечко летит
-      later(2700, function(){ pose(woman, 2); });                                           // она обернулась
-      later(3150, function(){ cap(3); phone.classList.remove('in'); th.classList.remove('tapping'); });
-      later(3450, function(){ pose(man, 4); man.classList.add('close'); pose(woman, 3); heart.classList.add('rest'); }); // подходит
-      later(4550, function(){ replay.classList.add('show'); playing = false; later(4000, play); }); // кнопка — когда он дошёл (3450 + .8s хода); мягкий автоповтор
+      later(125,  function(){ man.classList.add('in'); });                                  // он выползает
+      later(625,  function(){ woman.classList.add('in'); });                                // вдалеке — она
+      later(1125, function(){ pose(man, 2); cap(1); });                                     // увидел её!
+      later(1625, function(){ pose(man, 3); phone.classList.add('in'); });                  // достал телефон
+      later(2550, function(){ th.classList.add('tapping'); cap(2); });                      // лайк
+      later(2950, function(){ heart.classList.add('fly'); });                               // сердечко летит
+      later(3375, function(){ pose(woman, 2); });                                           // она обернулась
+      later(3950, function(){ cap(3); phone.classList.remove('in'); th.classList.remove('tapping'); });
+      later(4300, function(){ pose(man, 4); man.classList.add('close'); pose(woman, 3); heart.classList.add('rest'); }); // подходит
+      later(5700, function(){ replay.classList.add('show'); playing = false; later(4000, play); }); // кнопка — когда он дошёл (4300 + 1s хода); мягкий автоповтор
     }
     function play(){
       reset(); th.classList.remove('idle'); playing = true; everPlayed = true;

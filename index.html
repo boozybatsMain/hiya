@@ -23,7 +23,19 @@
   // и не при открытии клавиатуры, иначе вернутся лаги (см. комментарий у .hero).
   (function () {
     var lastW = 0;
-    function set() { lastW = window.innerWidth; document.documentElement.style.setProperty('--hero-vh', window.innerHeight + 'px'); }
+    function set() {
+      lastW = window.innerWidth;
+      var d = document.documentElement;
+      d.style.setProperty('--hero-vh', window.innerHeight + 'px');
+      // Высота фона: фиксированные px с запасом ≥ вьюпорта БЕЗ «ушка».
+      // 100lvh в webview Instagram не помог (считается как текущая высота и
+      // меняется при скролле) — поэтому берём максимум из высоты экрана
+      // устройства и innerHeight×1.12 и больше НЕ пересчитываем (кроме
+      // поворота). Лишние пиксели фона просто обрезаны краем экрана.
+      var big = Math.ceil(Math.max(window.innerHeight * 1.12, (window.screen && screen.height) || 0));
+      d.style.setProperty('--bg-h', big + 'px');
+      d.classList.add('bgfix');
+    }
     set();
     window.addEventListener('resize', function () { if (window.innerWidth !== lastW) set(); });
   })();
@@ -279,12 +291,15 @@
   }
   /* Webview Instagram: нижняя панель («ушко») прячется при скролле, вьюпорт
      растёт — fixed-фон с inset:0 растягивался следом, и картинка прыгала.
-     Считаем фон СРАЗУ на большую высоту (без ушка): 100lvh стабилен при
-     скролле. Пока панель видна, лишние ~60px фона просто обрезаны экраном.
-     Без поддержки lvh остаётся прежнее поведение (inset: 0). */
+     100lvh НЕ спас (в webview Instagram он равен текущей высоте и тоже
+     меняется), поэтому ранний скрипт в <head> замораживает высоту фона в
+     ПИКСЕЛЯХ с запасом (--bg-h = max(screen.height, innerHeight×1.12)) и
+     ставит класс bgfix. Лишняя высота обрезается краем экрана. Пересчёт —
+     только при повороте (смене ширины). Фолбэки ниже — на случай без JS. */
   @supports (height: 100lvh) {
     .site-bg { bottom: auto; height: 100lvh; }
   }
+  html.bgfix .site-bg { bottom: auto; height: var(--bg-h); }
 
   /* drifting particles — a touch of life */
   .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }

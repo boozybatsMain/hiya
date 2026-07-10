@@ -1701,6 +1701,19 @@
     if (window._modalReturn && window._modalReturn.focus) window._modalReturn.focus({ preventScroll: true });
   }
 
+  // Страховка от «залипшего» скролла. openModal ставит body.overflow:hidden;
+  // известный баг WKWebView (Instagram/iOS): модалка иногда НЕ отрисовывается,
+  // и пользователь остаётся с невидимой формой и замёрзшим скроллом. Лечение,
+  // которым люди и пользуются интуитивно, — свернуть/вернуть апку. На возврате
+  // (bfcache pageshow или visibilitychange→visible) гарантируем: если модалка
+  // не открыта — снимаем блокировку прокрутки. Пока модалка реально открыта,
+  // лок не трогаем.
+  function unstickScroll(){
+    if (!modal || !modal.classList.contains('open')) document.body.style.overflow = '';
+  }
+  window.addEventListener('pageshow', unstickScroll);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) unstickScroll(); });
+
   // Долить отложенный тап по CTA, случившийся до загрузки этого скрипта
   // (ранняя заглушка openModal в <head>). Функции выше уже перекрыли заглушку
   // на window; открываем модалку тем же источником, что запомнил ранний тап.
@@ -2135,16 +2148,17 @@
     var heroBtn = document.querySelector('.hero-actions .btn-gold');
     var nav = document.querySelector('nav');
     if (!heroBtn || !nav) return;
-    var ticking = false;
-    function check(){
-      ticking = false;
-      var r = heroBtn.getBoundingClientRect();
-      nav.classList.toggle('cta-show', r.bottom < 48); // 48 ≈ высота слим-хедера: «ушла» = скрылась и под ним
-    }
-    function onScrollOrResize(){ if (!ticking) { ticking = true; requestAnimationFrame(check); } }
-    window.addEventListener('scroll', onScrollOrResize, { passive: true });
-    window.addEventListener('resize', onScrollOrResize, { passive: true });
-    check();
+    // IntersectionObserver вместо scroll + getBoundingClientRect: чтение rect на
+    // ещё не устаканенной верстке форсировало синхронный layout (~82мс на слабом
+    // мобиле, замерено) прямо в момент, когда нужна отзывчивость первого экрана.
+    // Наблюдатель считает пересечение вне главного потока и не рефлоует. Порог
+    // -48px сверху ≈ высота слим-хедера: как только hero-CTA уходит под него —
+    // показываем кнопку в шапке (на десктопе класс безвреден).
+    if (!('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function(entries){
+      nav.classList.toggle('cta-show', !entries[0].isIntersecting);
+    }, { rootMargin: '-48px 0px 0px 0px', threshold: 0 });
+    io.observe(heroBtn);
   })();
 
   // ── Стрелки-подсказка скролла: видны, только пока страница у верха ──
@@ -2157,7 +2171,9 @@
       cue.classList.toggle('away', (window.scrollY || window.pageYOffset || 0) > 60);
     }
     window.addEventListener('scroll', function(){ if (!ticking) { ticking = true; requestAnimationFrame(check); } }, { passive: true });
-    check();
+    // не синхронно: чтение window.scrollY на «сырой» верстке форсирует layout.
+    // Стрелки по умолчанию видны у верха (CSS), стартовое состояние сверяем в rAF.
+    requestAnimationFrame(check);
   })();
 
   // ── Кукольный театр «Три простых шага» ───────────────────────────

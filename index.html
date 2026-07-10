@@ -269,7 +269,14 @@
 
   /* ── Fixed site background (attached cafe photo + warm ambiance) ── */
   .site-bg {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    /* sticky, НЕ fixed: в iOS-webview (Instagram) fixed-элементы вздрагивают,
+       когда нижняя панель («ушко») схлопывается и вьюпорт пересчитывается —
+       даже с замороженной px-высотой. sticky привязан к ДОКУМЕНТУ и ведётся
+       композитором синхронно со скроллом — панель на него не влияет.
+       Элемент первый в <body>: липнет к верху сразу и на всю страницу;
+       отрицательный margin-bottom убирает его высоту из потока. */
+    position: sticky; top: 0; left: 0; right: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    height: 100vh; margin-bottom: -100vh;
     background:
       radial-gradient(120% 80% at 84% 2%, rgba(128,88,42,0.5), transparent 52%),
       radial-gradient(85% 62% at 6% 96%, rgba(84,58,30,0.34), transparent 62%),
@@ -289,17 +296,10 @@
     content: ""; position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(10,8,6,0.5) 0%, rgba(10,8,6,0.28) 32%, rgba(10,8,6,0.4) 62%, var(--bg) 100%);
   }
-  /* Webview Instagram: нижняя панель («ушко») прячется при скролле, вьюпорт
-     растёт — fixed-фон с inset:0 растягивался следом, и картинка прыгала.
-     100lvh НЕ спас (в webview Instagram он равен текущей высоте и тоже
-     меняется), поэтому ранний скрипт в <head> замораживает высоту фона в
-     ПИКСЕЛЯХ с запасом (--bg-h = max(screen.height, innerHeight×1.12)) и
-     ставит класс bgfix. Лишняя высота обрезается краем экрана. Пересчёт —
-     только при повороте (смене ширины). Фолбэки ниже — на случай без JS. */
-  @supports (height: 100lvh) {
-    .site-bg { bottom: auto; height: 100lvh; }
-  }
-  html.bgfix .site-bg { bottom: auto; height: var(--bg-h); }
+  /* Высота фона — замороженные ранним скриптом px с запасом больше вьюпорта
+     без «ушка» (--bg-h = max(screen.height, innerHeight×1.12)): скрытие панели
+     не меняет ни одного значения, лишние пиксели обрезаны краем экрана. */
+  html.bgfix .site-bg { height: var(--bg-h); margin-bottom: calc(-1 * var(--bg-h)); }
 
   /* drifting particles — a touch of life */
   .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }

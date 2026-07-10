@@ -277,6 +277,14 @@
     content: ""; position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(10,8,6,0.5) 0%, rgba(10,8,6,0.28) 32%, rgba(10,8,6,0.4) 62%, var(--bg) 100%);
   }
+  /* Webview Instagram: нижняя панель («ушко») прячется при скролле, вьюпорт
+     растёт — fixed-фон с inset:0 растягивался следом, и картинка прыгала.
+     Считаем фон СРАЗУ на большую высоту (без ушка): 100lvh стабилен при
+     скролле. Пока панель видна, лишние ~60px фона просто обрезаны экраном.
+     Без поддержки lvh остаётся прежнее поведение (inset: 0). */
+  @supports (height: 100lvh) {
+    .site-bg { bottom: auto; height: 100lvh; }
+  }
 
   /* drifting particles — a touch of life */
   .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
@@ -1291,6 +1299,10 @@
        В современных браузерах это правило ПЕРЕБИВАЕТСЯ container query
        ниже (телефон занимает реально измеренный остаток — без магии). */
     .ip3d-scene { --ip3d-w: clamp(132px, min(calc((var(--hero-vh, 100svh) - 372px) / 2.05), 60vw), 236px); }
+    /* In-app Instagram/Facebook: вьюпорт ниже обычного Safari (панели сверху и
+       снизу), телефону не хватало строки и он наезжал на подзаголовок. Опускаем
+       нижний порог размера ТОЛЬКО здесь; обычные браузеры не трогаем. */
+    html.inapp .ip3d-scene { --ip3d-w: clamp(110px, min(calc((var(--hero-vh, 100svh) - 372px) / 2.05), 60vw), 236px); }
     /* Высоту первого экрана держит min-height:var(--hero-vh,100svh) из базового
        правила: на загрузке экран = видимой высоте (адресная строка/«ушко» видны);
        при их скрытии высота НЕ пересчитывается (иначе лаги — см. коммент в .hero).
@@ -1400,6 +1412,8 @@
         width: 100%; min-height: 0; align-items: center;
       }
       .ip3d-scene { --ip3d-w: clamp(132px, min(calc(100cqh / 2.05), 60vw, 272px), 272px); }
+      /* In-app Instagram/Facebook: ниже порог минимума — см. комментарий выше */
+      html.inapp .ip3d-scene { --ip3d-w: clamp(110px, min(calc(100cqh / 2.05), 60vw, 272px), 272px); }
     }
   }
 </style>

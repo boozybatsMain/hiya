@@ -2255,25 +2255,37 @@
   // ── Фолбэк для вебвью, где visualViewport «не замечает» клавиатуру-оверлей
   // (IG на iOS: vv.height не меняется — kbAdjust выше бездействует, и поле с
   // кнопкой остаются под клавиатурой). На фокусе поля: даём оверлею запас
-  // прокрутки под типичную клавиатуру и поднимаем поле в верхнюю треть
-  // видимой области; на blur прибираем, если честного перекрытия так и нет.
+  // прокрутки под типичную клавиатуру и СЕРИЕЙ проходов (гонка с нативным
+  // подскроллом iOS) держим поле в верхней трети видимой области. На blur —
+  // безусловный сброс паддинга И прокрутки: без него второй фокус стартовал
+  // из сдвинутого состояния и поле «зависало» под клавиатурой.
   (function () {
     var email = document.getElementById('email');
     if (!email) return;
     var vv = window.visualViewport;
+    var timers = [];
     function occluded() { return vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0; }
+    function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }
+    function lift() {
+      if (!modal.classList.contains('open') || document.activeElement !== email) return;
+      if (occluded() > 60) return; // vv честный — kbAdjust уже всё поднял
+      modal.style.paddingBottom = Math.round(window.innerHeight * 0.55) + 'px';
+      var r = email.getBoundingClientRect();
+      var target = Math.round(window.innerHeight * 0.28);
+      var diff = Math.round(r.top - target);
+      if (Math.abs(diff) > 8) modal.scrollTop += diff; // корректируем в обе стороны
+    }
     email.addEventListener('focus', function () {
-      setTimeout(function () { // после анимации выезда клавиатуры
-        if (!modal.classList.contains('open') || document.activeElement !== email) return;
-        if (occluded() > 60) return; // vv честный — kbAdjust уже всё поднял
-        modal.style.paddingBottom = Math.round(window.innerHeight * 0.55) + 'px';
-        var r = email.getBoundingClientRect();
-        var target = Math.round(window.innerHeight * 0.28);
-        if (r.top > target) modal.scrollTop += Math.round(r.top - target);
-      }, 350);
+      clearTimers();
+      [200, 400, 700, 1100].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
     });
     email.addEventListener('blur', function () {
-      if (occluded() <= 60) modal.style.paddingBottom = '';
+      clearTimers();
+      timers.push(setTimeout(function () {
+        if (document.activeElement === email) return; // фокус вернулся — не трогаем
+        modal.style.paddingBottom = '';
+        modal.scrollTop = 0; // детерминированный старт для следующего фокуса
+      }, 80));
     });
   })();
 

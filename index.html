@@ -2224,52 +2224,51 @@
     if (modal.scrollHeight <= modal.clientHeight) e.preventDefault();
   }, { passive: false });
 
-  // ── Клавиатура-оверлей (iOS-вебвью): layout-вьюпорт НЕ ресайзится,
-  // клавиатура просто накрывает низ модалки — поле почты и кнопка исчезают
-  // под ней, напечатать невозможно (вероятный сценарий записи Clarity 11.07).
-  // Пока visualViewport меньше layout-вьюпорта: даём оверлею запас прокрутки
-  // на высоту перекрытия (24 — родной padding .overlay) и подскролливаем
-  // сфокусированный элемент над клавиатуру. Где клавиатура ресайзит layout
-  // (Android), перекрытие ≈ 0 — код не вмешивается, работает CSS-скролл.
+  // ── Клавиатура: ЕДИНЫЙ обработчик. Раньше их было два — честный
+  // visualViewport (kbAdjust) и фолбэк по фокусу поля — и они перетирали
+  // paddingBottom друг друга: в IG-вебвью vv иногда «видит» лишь панель
+  // автозаполнения (30–60px), событие vv прилетало после фолбэка, ставило
+  // маленький паддинг, scrollTop клампился — поле «залипало» под клавиатурой
+  // (чаще при быстрых тапах: больше vv-событий — больше перетираний).
+  // Теперь паддинг всегда = MAX(оценка по vv; 55% экрана при фокусе в поле),
+  // и обе ветки подскролла работают с одним состоянием.
   (function () {
     var vv = window.visualViewport;
-    if (!vv) return;
-    function kbAdjust() {
-      if (!modal.classList.contains('open')) { modal.style.paddingBottom = ''; return; }
-      var occluded = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      if (occluded > 60) {
-        modal.style.paddingBottom = (24 + occluded) + 'px';
+    var email = document.getElementById('email');
+    var timers = [];
+    function occluded() { return vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0; }
+    function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }
+    function emailFocused() { return email && document.activeElement === email; }
+
+    // Общий расчёт запаса прокрутки — единственное место, где пишется паддинг
+    function applyPad() {
+      if (!modal.classList.contains('open')) { modal.style.paddingBottom = ''; return 0; }
+      var occ = occluded();
+      var pad = occ > 60 ? 24 + occ : 0; // 24 — родной padding .overlay
+      if (emailFocused()) pad = Math.max(pad, Math.round(window.innerHeight * 0.55));
+      modal.style.paddingBottom = pad ? pad + 'px' : '';
+      return occ;
+    }
+
+    // Честный vv (Safari, Android): держим сфокусированный элемент над клавиатурой
+    function onVV() {
+      var occ = applyPad();
+      if (occ > 60) {
         var el = document.activeElement;
         if (el && modalBox.contains(el)) {
           var over = el.getBoundingClientRect().bottom - (vv.offsetTop + vv.height - 12);
           if (over > 0) modal.scrollTop += over;
         }
-      } else {
-        modal.style.paddingBottom = '';
       }
     }
-    vv.addEventListener('resize', kbAdjust);
-    vv.addEventListener('scroll', kbAdjust);
-  })();
+    if (vv) { vv.addEventListener('resize', onVV); vv.addEventListener('scroll', onVV); }
 
-  // ── Фолбэк для вебвью, где visualViewport «не замечает» клавиатуру-оверлей
-  // (IG на iOS: vv.height не меняется — kbAdjust выше бездействует, и поле с
-  // кнопкой остаются под клавиатурой). На фокусе поля: даём оверлею запас
-  // прокрутки под типичную клавиатуру и СЕРИЕЙ проходов (гонка с нативным
-  // подскроллом iOS) держим поле в верхней трети видимой области. На blur —
-  // безусловный сброс паддинга И прокрутки: без него второй фокус стартовал
-  // из сдвинутого состояния и поле «зависало» под клавиатурой.
-  (function () {
-    var email = document.getElementById('email');
     if (!email) return;
-    var vv = window.visualViewport;
-    var timers = [];
-    function occluded() { return vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0; }
-    function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }
+    // Вебвью-оверлей (IG iOS): vv молчит — серией проходов (гонка с нативным
+    // подскроллом iOS) держим поле в верхней трети видимой области
     function lift() {
-      if (!modal.classList.contains('open') || document.activeElement !== email) return;
-      if (occluded() > 60) return; // vv честный — kbAdjust уже всё поднял
-      modal.style.paddingBottom = Math.round(window.innerHeight * 0.55) + 'px';
+      if (!modal.classList.contains('open') || !emailFocused()) return;
+      applyPad();
       var r = email.getBoundingClientRect();
       var target = Math.round(window.innerHeight * 0.28);
       var diff = Math.round(r.top - target);
@@ -2277,13 +2276,13 @@
     }
     email.addEventListener('focus', function () {
       clearTimers();
-      [200, 400, 700, 1100].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
+      [150, 350, 600, 1000, 1600].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
     });
     email.addEventListener('blur', function () {
       clearTimers();
       timers.push(setTimeout(function () {
-        if (document.activeElement === email) return; // фокус вернулся — не трогаем
-        modal.style.paddingBottom = '';
+        if (emailFocused()) return; // фокус вернулся — не трогаем
+        applyPad();          // паддинг уходит (или остаётся, пока vv честно занят)
         modal.scrollTop = 0; // детерминированный старт для следующего фокуса
       }, 80));
     });

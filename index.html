@@ -88,7 +88,12 @@
 
     var host = location.hostname;
     var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '';
-    var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX' && !isLocal && !optedOut;
+    /* ?x=1, ?x=2, … — личный кэш-бастер для перепроверки сайта из Instagram.
+       Такие заходы — тестовые: не шлём их ни в GA, ни в Clarity, ни в Pixel.
+       В рекламных ссылках параметра x нет, на реальных пользователей не влияет. */
+    var isTest = /[?&]x=\d+(&|$)/.test(location.search);
+    if (isTest) console.log('[analytics] тестовый заход (?x=N) — GA/Clarity/Pixel выключены');
+    var live = !!id && id.indexOf('G-') === 0 && id !== 'G-XXXXXXXXXX' && !isLocal && !optedOut && !isTest;
 
     /* ── First-touch атрибуция (UTM/fbclid) ────────────────────────────
        При первом заходе сохраняем источник в localStorage и дальше подмешиваем

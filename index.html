@@ -1119,7 +1119,13 @@
      схлопывается в 0 при переполнении, а overflow-y даёт доскроллить до верха.
      overscroll-behavior: скролл оверлея не «протекает» в фоновую страницу. */
   .overlay {
-    position: fixed; inset: 0; z-index: 100; display: flex; padding: 24px;
+    /* column: под модалкой лежит распорка .kb-gap — запас прокрутки для
+       клавиатуры. Раньше запас делали через padding-bottom самого оверлея,
+       но WebKit (Safari/IG-вебвью) НЕ учитывает нижний паддинг скролл-
+       контейнера в scrollHeight — прокрутки не возникало, и подскролл к полю
+       молча упирался в scrollTop=0 (Chrome паддинг учитывает, поэтому в
+       эмуляции всё «работало»). Реальный элемент обязаны учитывать все. */
+    position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; padding: 24px;
     overflow-y: auto; overscroll-behavior: contain;
     background: rgba(4,3,2,0.68);
     opacity: 0; visibility: hidden; pointer-events: none;
@@ -1129,12 +1135,15 @@
     opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity .28s ease;
   }
+  /* Распорка-запас прокрутки под клавиатуру (высоту пишет JS-applyPad) */
+  .kb-gap { flex: none; width: 100%; height: 0; pointer-events: none; }
   /* «Спуск» после ухода клавиатуры: JS вешает .kb-settle только на время
-     спуска — клавиатурный паддинг уезжает транзишеном, scrollTop скользит
-     smooth-скроллом, и модалка съезжает вниз одним движением вместо двух
-     резких прыжков (мгновенный scrollTop=0 + мгновенное снятие паддинга).
+     спуска — распорка уезжает транзишеном, scrollTop скользит smooth-скроллом,
+     и модалка съезжает вниз одним движением вместо двух резких прыжков
+     (мгновенный scrollTop=0 + мгновенное снятие запаса).
      На подъёме класса нет: подскролл к полю должен быть мгновенным. */
-  .overlay.kb-settle { transition: padding-bottom .3s cubic-bezier(.2,.7,.3,1); scroll-behavior: smooth; }
+  .overlay.kb-settle { scroll-behavior: smooth; }
+  .overlay.kb-settle .kb-gap { transition: height .3s cubic-bezier(.2,.7,.3,1); }
   /* блюр — на псевдоэлементе-подложке, а НЕ на самом .overlay: на iOS
      повторное включение backdrop-filter на родителе перестаёт отрисовывать
      его детей (модалка «исчезала» при втором открытии). Худший сценарий
@@ -1152,7 +1161,10 @@
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   }
   .modal {
-    position: relative; z-index: 1; width: 100%; max-width: 460px; margin: auto; text-align: center; overflow: hidden;
+    /* flex:none обязателен: оверлей — column-flex, и без него распорка .kb-gap
+       не создавала бы прокрутку, а СЖИМАЛА бы модалку (overflow:hidden снимает
+       min-content-пол для flex-shrink) */
+    position: relative; z-index: 1; flex: none; width: 100%; max-width: 460px; margin: auto; text-align: center; overflow: hidden;
     background: linear-gradient(180deg, #241c11 0%, var(--surface-2) 34%, var(--bg-2) 100%);
     border: 1px solid transparent; border-radius: var(--r-xl); padding: 56px 46px 42px;
     box-shadow: 0 50px 120px rgba(0,0,0,0.7), 0 0 90px rgba(207,160,85,0.12);
@@ -1844,6 +1856,7 @@
       <button class="btn btn-gold" onclick="closeModal()"><span>Готово</span></button>
     </div>
   </div>
+  <div class="kb-gap" id="kbGap" aria-hidden="true"></div>
 </div>
 
 <script>
@@ -1883,7 +1896,7 @@
     // и прокрутку оверлея: visibility:hidden сохраняет scrollTop, при повторном
     // открытии в сжатом вьюпорте модалка выезжала бы прокрученной (крестик за экраном)
     modal.scrollTop = 0;
-    modal.style.paddingBottom = ''; // хвост клавиатурной подстройки прошлого открытия
+    var _g = document.getElementById('kbGap'); if (_g) _g.style.height = ''; // хвост клавиатурной подстройки прошлого открытия
     modal.classList.remove('kb-settle'); // и незавершённого «спуска» — иначе транзишен затянет первый подскролл
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -2282,7 +2295,7 @@
           'ih ' + window.innerHeight +
           '  vv ' + (vv ? Math.round(vv.height) + '+' + Math.round(vv.offsetTop) : '—') +
           '  occ ' + Math.round(occluded()) +
-          '  pad ' + (modal.style.paddingBottom || '0') +
+          '  gap ' + ((gap && gap.style.height) || '0') +
           '  sTop ' + Math.round(modal.scrollTop) +
           '  kbUp ' + kbUp + (modal.classList.contains('kb-settle') ? ' ⤓' : '') +
           '\n' + dbgLog.join('\n');
@@ -2290,15 +2303,18 @@
       })();
     }
 
-    // Единственное место, где пишется паддинг. Floor 55% экрана — гарантия
-    // запаса прокрутки там, где vv молчит (IG), но ТОЛЬКО пока kbUp: иначе
-    // после ухода клавиатуры с живым фокусом паддинг возвращался бы вечно.
+    // Единственное место, где пишется запас прокрутки — высота распорки
+    // .kb-gap (НЕ padding: WebKit не учитывает нижний паддинг скролл-
+    // контейнера в scrollHeight, и прокрутки не возникало — см. CSS .overlay).
+    // Floor 55% экрана — гарантия запаса там, где vv молчит, но ТОЛЬКО пока
+    // kbUp: иначе после ухода клавиатуры с живым фокусом запас жил бы вечно.
+    var gap = document.getElementById('kbGap');
     function applyPad() {
-      if (!modal.classList.contains('open')) { modal.style.paddingBottom = ''; return 0; }
+      if (!modal.classList.contains('open')) { if (gap) gap.style.height = ''; return 0; }
       var occ = occluded();
-      var pad = occ > 60 ? 24 + occ : 0; // 24 — родной padding .overlay
+      var pad = occ > 60 ? 24 + occ : 0; // 24 — родной padding .overlay, WebKit его «съедает»
       if (TOUCH && kbUp && emailFocused()) pad = Math.max(pad, Math.round(window.innerHeight * 0.55));
-      modal.style.paddingBottom = pad ? pad + 'px' : '';
+      if (gap) gap.style.height = pad ? pad + 'px' : '';
       return occ;
     }
 
@@ -2358,6 +2374,10 @@
       kbUp = true;
       clearTimeout(settleT); modal.classList.remove('kb-settle');
       clearTimers();
+      // Первый проход сразу, ДО подъёма клавиатуры: поле заранее встаёт выше
+      // её будущей зоны, и нативная «панорама» iOS (vv.offsetTop) не нужна —
+      // именно её откат давал резкое падение модалки при закрытии.
+      lift();
       [150, 350, 600, 1000, 1600].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
     }
     email.addEventListener('focus', function () { scheduleLift('focus'); });
@@ -2383,7 +2403,7 @@
       if (h !== prev) dbg('win-resize ' + prev + '→' + h);
       if (!TOUCH || !modal.classList.contains('open')) return;
       if (h - prev > 120) {
-        if (emailFocused() || modal.style.paddingBottom || modal.scrollTop > 0) settle();
+        if (emailFocused() || (gap && gap.style.height) || modal.scrollTop > 0) settle();
       } else if (prev - h > 120 && emailFocused() && kbUp) {
         lift();
       }

@@ -4,24 +4,16 @@
 //
 // Модель данных:
 //  - Firestore `leads/tg:<user_id>` — запись лида (кто, когда, номер, ft-метка).
-//  - RTDB `waitlist/signups` — ЕДИНЫЙ счётчик с сайтом (сайт показывает
-//    BASE + signups); транзакция +1 выдаёт номер атомарно.
-//  - RTDB `waitlist/recent` — инициалы для ленты аватарок на сайте.
+//  - RTDB `waitlist/signups` — ЕДИНЫЙ счётчик с сайтом (см. lib/common.js).
+//
+// Возвращает { reply, notify }: reply — ответ пользователю, notify —
+// уведомление владельцу (@oddbear); оба в формате sendMessage или null.
 
-const BASE = 151;   // как в index.html: показываемое число = BASE + signups
-const TARGET = 300;
-
-function initialsFrom(name) {
-  const s = String(name || '').replace(/[^0-9A-Za-zА-Яа-яЁё ]/g, '').trim();
-  if (!s) return '';
-  const parts = s.split(/\s+/).filter(Boolean);
-  const ini = parts.length >= 2 ? parts[0][0] + parts[1][0] : s.slice(0, 2);
-  return ini.toUpperCase();
-}
+const { BASE, TARGET, OWNER_CHAT_ID, initialsFromName, takePlace } = require('./common');
 
 // Выдать (или вернуть существующий) номер в очереди для tg-пользователя.
 async function ensureLead(deps, user, payload) {
-  const { fs, rtdb, now } = deps;
+  const { fs, now } = deps;
   const ref = fs.collection('leads').doc('tg:' + user.id);
 
   const snap = await ref.get();
@@ -49,20 +41,9 @@ async function ensureLead(deps, user, payload) {
     }
   }
 
-  // Атомарный источник номера — общий с сайтом счётчик
-  const tx = await rtdb.ref('waitlist/signups').transaction(function (c) {
-    return (c || 0) + 1;
-  });
-  const count = (tx && tx.snapshot && tx.snapshot.val()) || 0;
-  const place = BASE + count;
-
-  await ref.set({ place: place, placed_at: now() }, { merge: true });
-
-  const ini = initialsFrom(user.first_name || user.username);
-  if (ini) {
-    try { await rtdb.ref('waitlist/recent').push({ i: ini, t: now() }); } catch (e) {}
-  }
-  return { place: place, isNew: true };
+  const taken = await takePlace(deps, initialsFromName(user.first_name || user.username));
+  await ref.set({ place: taken.place, placed_at: now() }, { merge: true });
+  return { place: taken.place, total: taken.total, isNew: true };
 }
 
 function newText(place) {
@@ -78,28 +59,39 @@ function existingText(place) {
 const HELP_TEXT = 'Я бот раннего доступа hiya — знакомства с теми, кто сейчас в том же заведении.\n' +
   'Жми /start — займу тебе место в списке (№ из ' + TARGET + ') и напишу в день запуска в Алматы.';
 
-// Возвращает {chat_id, text} для sendMessage или null, если отвечать не на что.
+function ownerNote(user, payload, r) {
+  const who = (user.first_name || '') + (user.username ? ' (@' + user.username + ')' : '');
+  return {
+    chat_id: OWNER_CHAT_ID,
+    text: '🆕 №' + r.place + ' — Telegram: ' + (who || user.id) +
+      '\nМетка: ' + (payload || '—') + '\nВсего в списке: ' + (r.total || r.place)
+  };
+}
+
 async function handleUpdate(update, deps) {
   const msg = (update && (update.message || update.edited_message)) || null;
-  if (!msg || !msg.from || msg.from.is_bot || !msg.chat) return null;
+  if (!msg || !msg.from || msg.from.is_bot || !msg.chat) return { reply: null, notify: null };
   const text = String(msg.text || '').trim();
   const chatId = msg.chat.id;
 
   if (/^\/start/.test(text)) {
     const payload = text.split(/\s+/)[1] || '';
     const r = await ensureLead(deps, msg.from, payload);
-    return { chat_id: chatId, text: r.isNew ? newText(r.place) : existingText(r.place) };
+    return {
+      reply: { chat_id: chatId, text: r.isNew ? newText(r.place) : existingText(r.place) },
+      notify: r.isNew ? ownerNote(msg.from, payload, r) : null
+    };
   }
 
   if (/^\/place/.test(text)) {
     const snap = await deps.fs.collection('leads').doc('tg:' + msg.from.id).get();
     if (snap.exists && snap.get('place')) {
-      return { chat_id: chatId, text: existingText(snap.get('place')) };
+      return { reply: { chat_id: chatId, text: existingText(snap.get('place')) }, notify: null };
     }
-    return { chat_id: chatId, text: 'Тебя пока нет в списке. ' + HELP_TEXT };
+    return { reply: { chat_id: chatId, text: 'Тебя пока нет в списке. ' + HELP_TEXT }, notify: null };
   }
 
-  return { chat_id: chatId, text: HELP_TEXT };
+  return { reply: { chat_id: chatId, text: HELP_TEXT }, notify: null };
 }
 
-module.exports = { handleUpdate, ensureLead, initialsFrom, BASE, TARGET };
+module.exports = { handleUpdate, ensureLead, BASE, TARGET };

@@ -50,20 +50,26 @@
   (`fbevent('track','Lead',{...}, id)` / `fbevent('trackCustom','OpenSignup',{...})`).
 - `ctag(key, value)` — Clarity custom tag.
 
-## Флоу лида (sendLead)
+## Флоу лида (sendLead) — с 11.07.2026 через Cloud Function
 
 1. Пользователь отправляет email (или входит через Google) → `sendLead(email, method)`.
-2. Заявка уходит **`fetch`-ем в FormSubmit AJAX API** (`formsubmit.co/ajax/<endpoint>`,
-   `keepalive: true` — переживает закрытие вкладки) со всеми полями:
+2. Заявка уходит **`fetch`-ем в Cloud Function `/lead`**
+   (`us-central1-hiya-e8f5c.cloudfunctions.net/lead`, `keepalive: true`,
+   тело без Content-Type — «simple request» без CORS-preflight) с полями:
    `email`, `method`, `ft_*`, `fbclid`, `referrer`, `landing`, `event_id`.
-3. **Только после подтверждения** сервером (`success: true`) шлются события:
-   `generate_lead` (GA), `Lead` (Pixel, с `eventID`), `lead=yes` (Clarity).
-4. При ошибке AJAX — запасной путь через скрытую форму в iframe (как раньше)
-   + GA-событие `lead_error` (`stage: ajax_reject | ajax_fail`).
-5. UI не ждёт сеть: счётчик, аватарка и экран «Ты в списке» — сразу.
+3. Function — источник истины: Firestore `leads/em:<sha256>` (дедуп по адресу),
+   атомарный номер из общего счётчика RTDB, аватарка, **уведомление владельцу
+   в Telegram**. Подробности — [`telegram-bot.md`](telegram-bot.md).
+4. **Только после `success: true`** шлются события: `generate_lead` (GA),
+   `Lead` (Pixel, с `eventID`), `lead=yes` (Clarity). При ошибке — GA-событие
+   `lead_error` (`stage: fn_reject | fn_fail`).
+5. UI не ждёт сеть: счётчик (локально), аватарка и экран «Ты в списке» — сразу;
+   ответ сервера уточняет номер (например, при повторной заявке того же адреса).
+6. **Клиент в RTDB больше не пишет** (rules `.write: false`) — счётчик двигают
+   только Function и бот. FormSubmit из флоу убран.
 
-`event_id` (вида `lead_<ts>_<rand>`) уходит и в пиксель, и в письмо — это ключ
-дедупликации для будущего серверного Conversions API (Firebase Function).
+`event_id` (вида `lead_<ts>_<rand>`) хранится в лиде и уходит в пиксель — ключ
+дедупликации для будущего серверного Conversions API.
 
 ## События модалки
 

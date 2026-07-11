@@ -74,10 +74,27 @@ Runtime Node 20 (deprecated, до 2026-10-30 работает — поднять
 (занять место) и `/place` (мой номер). Меняются curl'ом:
 `setMyDescription` / `setMyShortDescription` / `setMyCommands`.
 
+## /lead — приём заявок с сайта (добавлен 11.07.2026)
+
+`POST https://us-central1-hiya-e8f5c.cloudfunctions.net/lead` (JSON) — замена
+FormSubmit. Firestore `leads/em:<sha256(email)>` (дедуп: повторная отправка
+того же адреса возвращает прежний номер и НЕ двигает счётчик), номер — из
+общего счётчика RTDB, аватарка-инициалы, ответ `{success, place}`.
+Поле `test: true` — прогон без записи (только уведомление, помечено 🧪).
+
+**Уведомления владельцу**: каждая заявка (Telegram-бот И сайт) шлёт сообщение
+в чат `406663035` (@oddbear, `OWNER_CHAT_ID` в `lib/common.js`): номер, канал
+(Telegram/Google/почта), контакт, источник ft, всего в списке. Повторные
+заявки помечаются 🔁 и счётчик не трогают.
+
+**RTDB закрыта на запись** (`database.rules.json` в репо, деплой
+`firebase deploy --only database`): читать можно `waitlist/signups` и
+`waitlist/recent`, писать — никому (Function/бот идут через Admin SDK).
+Гриф-дыра счётчика из аудита закрыта.
+
 ## Что дальше (тот же монолит)
 
-- `POST /lead` — серверный приём почтовой заявки (план из
-  [`meta-pixel.md`](meta-pixel.md)): Firestore + перенос счётчика на сервер +
-  пересылка в FormSubmit + CAPI с существующим `event_id`. После этого RTDB
-  закрывается на запись (`.write: false`) — уходит гриф-дыра счётчика.
-- Рассылка запуска: один скрипт по `leads/*` с `platform: telegram`.
+- CAPI: серверный Lead с существующим `event_id` — по триггерам из
+  [`ads-rebuild-todo.md`](ads-rebuild-todo.md)/аудита (после запуска).
+- Рассылка запуска: один скрипт по `leads/*` (`platform: telegram` — через
+  бота; `platform: site` — по почте).

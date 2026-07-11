@@ -31,29 +31,18 @@
 
 ## Счётчик «151 из 300» — реальный, общий для всех (Firebase)
 
-Число на первом экране («сколько человек уже ждут») хранится в бесплатной
-базе Firebase Realtime Database, поэтому оно **общее для всех посетителей** и
-растёт на +1 при каждой оставленной почте.
+Число на первом экране («сколько человек уже ждут») хранится в Firebase
+Realtime Database и **общее для всех посетителей**. С 11.07.2026 его двигают
+только Cloud Function `/lead` (заявки с сайта) и Telegram-бот — **клиент в
+базу не пишет**.
 
-✅ **Конфиг уже вставлен** (проект `hiya-e8f5c`) в `index.html` →
-`window.FIREBASE_CONFIG`. Счётчик уже общий и живой.
+✅ Конфиг вставлен (проект `hiya-e8f5c`) в `index.html` → `window.FIREBASE_CONFIG`.
 
-⚠️ **Что осталось проверить — правила базы.** Стартовый *test mode* работает
-~30 дней, потом закроется и счётчик замрёт. Открой Firebase Console → Realtime
-Database → вкладка **Rules** и поставь такие (читать всем, только увеличивать):
-
-```json
-{
-  "rules": {
-    "waitlist": {
-      "signups": {
-        ".read": true,
-        ".write": "newData.isNumber() && (!data.exists() || newData.val() === data.val() + 1)"
-      }
-    }
-  }
-}
-```
+✅ **Правила базы лежат в репо** — [`database.rules.json`](database.rules.json)
+(читать можно `waitlist/signups` и `waitlist/recent`, писать — никому; серверный
+код ходит через Admin SDK мимо правил). Деплой после правки:
+`firebase deploy --only database`. Бэкенд описан в
+[`docs/telegram-bot.md`](docs/telegram-bot.md).
 
 Если понадобится сменить проект Firebase — ниже как получить конфиг заново:
 

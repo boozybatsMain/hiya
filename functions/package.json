@@ -5,7 +5,7 @@
   "main": "index.js",
   "engines": { "node": "20" },
   "scripts": {
-    "test": "node test/handleUpdate.test.js"
+    "test": "node test/handleUpdate.test.js && node test/handleLead.test.js"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0",

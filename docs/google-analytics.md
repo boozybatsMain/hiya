@@ -17,7 +17,8 @@
 - Ключ (JSON): `~/.config/hiya/hiya-sa.json` — **СЕКРЕТ, не коммитить.**
   Лежит **вне репозитория** (не в папке сайта!), права `600`. `.gitignore` дополнительно
   блокирует ключи сервис-аккаунтов на случай, если такой файл когда-нибудь попадёт в репо.
-- Доступ настроен: аккаунт добавлен как пользователь GA4-ресурса (роль Viewer,
+- Доступ настроен: аккаунт добавлен как пользователь GA4-ресурса (роль с правом
+  редактирования — проверено 11.07.2026: Admin API создаёт custom dimensions;
   GA Admin → *Управление доступом к ресурсу*) и в проекте включён **Google Analytics
   Data API**. Проверено рабочим кодом: 2026-07-09.
 - Если ключ потерян — пересоздать: GCP Console → IAM → Service Accounts →
@@ -55,10 +56,13 @@ bash scripts/ga_report.sh '{"dateRanges":[{"startDate":"28daysAgo","endDate":"to
 `open_signup`, `generate_lead` (param `method`: `google` | `early_access`),
 `lead_error` (param `stage`: `ajax_reject` | `ajax_fail` — заявка ушла запасным
 путём), `google_signin_start`, `google_signin_error` (param `code`), `modal_close`,
+`modal_swipe_close` (`dir`), `email_focus`, `email_typed`,
+`lead_invalid_email` (`length`, `domain`), `email_abandon` (`via`, `length`,
+`valid`, `domain` — брошенный ввод почты, без самого адреса),
 `scroll_start`, `scroll_depth` (`percent`), `section_view` (`section`),
 `page_exit` (`engagement_seconds`, `max_scroll`, `last_section`),
-`ui_click` (`label`, `area`), `app_like_demo`, `intro_dismiss`,
-`view_how_it_works`, `inapp_browser`.
+`ui_click` (`label`, `area`), `app_like_demo` (`name`), `intro_dismiss` (`via`),
+`inapp_browser`, `theater_replay`, `logo_to_top`.
 Плюс авто-события GA4 (enhanced measurement): `form_start`, `form_submit`, `scroll`, `session_start`, `first_visit`, `user_engagement`.
 
 **В каждое событие** дополнительно подмешиваются параметры first-touch атрибуции
@@ -74,7 +78,9 @@ bash scripts/ga_report.sh '{"dateRanges":[{"startDate":"28daysAgo","endDate":"to
   (микроконверсия). Дефолтный `purchase` не используется — на сайте не срабатывает.
 - **Custom dimensions** (event scope): `method`, `source`, `section`, `label`,
   `last_section`, `max_scroll`, `engagement_seconds`, `ft_source`, `ft_campaign`,
-  `ft_content`. В Data API они доступны как `customEvent:<имя>`.
+  `ft_content`, `percent`, `area`, `stage`, `code`, `name`, `dir`, `via`,
+  `length`, `valid`, `domain` (последние 10 зарегистрированы 11.07.2026 через
+  Admin API). В Data API они доступны как `customEvent:<имя>`.
 
 > Параметры без регистрации в custom dimensions в Data API недоступны — их видно
 > лишь в DebugView / BigQuery-экспорте. Регистрировать заранее: задним числом

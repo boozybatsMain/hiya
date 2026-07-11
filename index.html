@@ -1189,6 +1189,18 @@
     border: 1px solid rgba(231,198,145,0.22); animation: m-halo 2.6s ease-in-out infinite;
   }
   @keyframes m-halo { 0%,100% { opacity: .35; transform: scale(1); } 50% { opacity: .9; transform: scale(1.06); } }
+  /* Компактная шапка модалки в тесных вьюпортах: IG-вебвью съедает ~200px
+     высоты, и из-за декоративной иконки с гало и орнамента форма не влезала
+     без скролла. Иконка ужимается, гало и орнамент прячутся; смысловые блоки
+     не трогаем. Обычные экраны (высокие) не затронуты. */
+  html.inapp .modal .m-ic { width: 46px; height: 46px; margin-bottom: 12px; border-radius: 15px; }
+  html.inapp .modal .m-ic svg { width: 20px; height: 20px; }
+  html.inapp .m-ic-halo, html.inapp .m-orn { display: none; }
+  @media (max-height: 720px) {
+    .modal .m-ic { width: 46px; height: 46px; margin-bottom: 12px; border-radius: 15px; }
+    .modal .m-ic svg { width: 20px; height: 20px; }
+    .m-ic-halo, .m-orn { display: none; }
+  }
   .modal h3 {
     font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px;
     background: linear-gradient(180deg, var(--ink) 30%, var(--gold-hi) 100%);

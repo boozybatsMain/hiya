@@ -2374,10 +2374,10 @@
       kbUp = true;
       clearTimeout(settleT); modal.classList.remove('kb-settle');
       clearTimers();
-      // Первый проход сразу, ДО подъёма клавиатуры: поле заранее встаёт выше
-      // её будущей зоны, и нативная «панорама» iOS (vv.offsetTop) не нужна —
-      // именно её откат давал резкое падение модалки при закрытии.
-      lift();
+      // НИКАКОГО мгновенного lift при фокусе: синхронный подскролл уводил поле
+      // из-под пальца ДО того, как долетал click, click попадал в фон оверлея —
+      // а фон закрывает модалку (event.target===this → closeModal). Первый
+      // проход только через 150мс, когда тап уже полностью отработал.
       [150, 350, 600, 1000, 1600].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
     }
     email.addEventListener('focus', function () { scheduleLift('focus'); });

@@ -2264,6 +2264,32 @@
     function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }
     function emailFocused() { return email && document.activeElement === email; }
 
+    // ?kbdebug=1 — экранная телеметрия для отладки на реальном телефоне
+    // (в IG-вебвью инспектора нет вообще): плашка сверху показывает живую
+    // геометрию вьюпорта и последние события клавиатурной машинерии.
+    var dbgEl = null, dbgLog = [];
+    function dbg(m) {
+      if (!dbgEl) return;
+      dbgLog.push((performance.now() / 1000).toFixed(1) + ' ' + m);
+      if (dbgLog.length > 9) dbgLog.shift();
+    }
+    if (/[?&]kbdebug=1(&|$)/.test(location.search)) {
+      dbgEl = document.createElement('div');
+      dbgEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(0,0,0,.85);color:#7CFC00;font:10px/1.4 Menlo,monospace;padding:4px 7px;pointer-events:none;white-space:pre;text-align:left;';
+      document.body.appendChild(dbgEl);
+      (function tick() {
+        dbgEl.textContent =
+          'ih ' + window.innerHeight +
+          '  vv ' + (vv ? Math.round(vv.height) + '+' + Math.round(vv.offsetTop) : '—') +
+          '  occ ' + Math.round(occluded()) +
+          '  pad ' + (modal.style.paddingBottom || '0') +
+          '  sTop ' + Math.round(modal.scrollTop) +
+          '  kbUp ' + kbUp + (modal.classList.contains('kb-settle') ? ' ⤓' : '') +
+          '\n' + dbgLog.join('\n');
+        requestAnimationFrame(tick);
+      })();
+    }
+
     // Единственное место, где пишется паддинг. Floor 55% экрана — гарантия
     // запаса прокрутки там, где vv молчит (IG), но ТОЛЬКО пока kbUp: иначе
     // после ухода клавиатуры с живым фокусом паддинг возвращался бы вечно.
@@ -2281,6 +2307,7 @@
     // паддингом, и в точке, где переполнение исчезает, top-выравнивание
     // непрерывно переходит в центрирование margin:auto — одно движение вниз.
     function settle() {
+      dbg('settle');
       kbUp = false;
       clearTimers();
       modal.classList.add('kb-settle');
@@ -2293,6 +2320,7 @@
     // Честный vv (Safari, Android): держим сфокусированный элемент над клавиатурой
     function onVV() {
       var occ = occluded();
+      if (occ !== lastOcc) dbg('vv occ ' + Math.round(lastOcc) + '→' + Math.round(occ));
       if (occ <= 60 && lastOcc > 60 && emailFocused()) {
         settle(); // клавиатура ушла БЕЗ blur (свайп-дисмисс) — спускаемся
       } else {
@@ -2321,23 +2349,26 @@
       var r = email.getBoundingClientRect();
       var target = Math.round((vv ? vv.offsetTop : 0) + (vv ? vv.height : window.innerHeight) * 0.28);
       var diff = Math.round(r.top - target);
+      dbg('lift top=' + Math.round(r.top) + ' цель=' + target + ' diff=' + diff);
       if (Math.abs(diff) > 8) modal.scrollTop += diff; // корректируем в обе стороны
     }
-    function scheduleLift() {
+    function scheduleLift(via) {
       if (!TOUCH) return;
+      dbg('scheduleLift ← ' + via);
       kbUp = true;
       clearTimeout(settleT); modal.classList.remove('kb-settle');
       clearTimers();
       [150, 350, 600, 1000, 1600].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
     }
-    email.addEventListener('focus', scheduleLift);
+    email.addEventListener('focus', function () { scheduleLift('focus'); });
     // iOS прячет клавиатуру, НЕ снимая фокус. Тап по всё ещё сфокусированному
     // полю открывает её заново, но focus не стреляет — серия lift не стартовала,
     // поле оставалось под клавиатурой (кейс «повторный тап — скролл затупил»).
     // Ловим такой тап отдельно; на первом тапе emailFocused() ещё false —
     // двойного запуска нет.
-    email.addEventListener('touchend', function () { if (emailFocused()) scheduleLift(); });
+    email.addEventListener('touchend', function () { if (emailFocused()) scheduleLift('touchend'); });
     email.addEventListener('blur', function () {
+      dbg('blur');
       clearTimers();
       timers.push(setTimeout(function () {
         if (emailFocused()) return; // фокус вернулся — не трогаем
@@ -2349,6 +2380,7 @@
     // сжатие при kbUp — открылась: подтягиваем поле по фактической геометрии.
     window.addEventListener('resize', function () {
       var h = window.innerHeight, prev = lastH; lastH = h;
+      if (h !== prev) dbg('win-resize ' + prev + '→' + h);
       if (!TOUCH || !modal.classList.contains('open')) return;
       if (h - prev > 120) {
         if (emailFocused() || modal.style.paddingBottom || modal.scrollTop > 0) settle();

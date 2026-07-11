@@ -50,12 +50,23 @@ TG_BOT_TOKEN='<токен из @BotFather>' bash scripts/tg_deploy.sh
 Скрипт: проверит токен → положит секреты → задеплоит `tg` → поставит вебхук
 с секретом → покажет `getWebhookInfo`. Проверка: написать боту `/start`.
 
-## Кнопка на сайте (добавить ПОСЛЕ рабочего вебхука)
+## Кнопка на сайте (добавлена 11.07.2026, вебхук живой)
 
-В модалку и на экран «Ты в списке»: `https://t.me/hiyawrld_bot?start=<метка>`,
-метка — например `ig_<utm_content>` из `hiyaFT()` (только `[A-Za-z0-9_-]`,
-≤64). Событие GA `tg_click {source}` + Clarity-тег. Пока вебхук не задеплоен,
-кнопку не публиковать — бот молчит.
+Две кнопки `.btn-tg` в `index.html`: в модалке («Или займи место через
+Telegram») и на экране «Ты в списке» («Продублировать в Telegram»).
+Диплинк `https://t.me/hiyawrld_bot?start=<метка>`, метка из first-touch:
+`<source>__<content>` (только `[A-Za-z0-9_-]`, ≤64, фолбэк `site`) — бот
+кладёт её в `start_payload` лида. События: GA `tg_click {area: modal|ok}`
+(param `area` зарегистрирован) + Clarity-тег `tg=click`.
+
+## Статус деплоя (11.07.2026)
+
+Функция задеплоена: `https://us-central1-hiya-e8f5c.cloudfunctions.net/tg`,
+вебхук стоит с secret_token (посторонний POST → 401), политика очистки
+образов — 3 дня. Blaze включён (биллинг-аккаунт «Firebase Payment»),
+бюджет-алерт $5. Firestore `(default)` создан в us-central1, production-rules.
+Runtime Node 20 (deprecated, до 2026-10-30 работает — поднять engines до 22
+при следующем деплое).
 
 ## Профиль бота (уже настроено через Bot API 11.07.2026)
 

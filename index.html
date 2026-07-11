@@ -1223,6 +1223,17 @@
   .btn-google:active { transform: translateY(0); }
   .btn-google:disabled { opacity: 0.6; pointer-events: none; }
   .btn-google svg { flex: none; }
+  /* Telegram — второй канал заявки: один тап вместо набора почты (важно в IG-вебвью) */
+  .btn-tg {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; margin-top: 10px; padding: 14px 0; border-radius: 100px;
+    font-size: 15px; font-weight: 600; text-decoration: none;
+    background: transparent; border: 1px solid var(--line); color: var(--ink);
+    box-shadow: none;
+  }
+  .btn-tg svg { flex: none; color: #2AABEE; }
+  .btn-tg:hover { transform: translateY(-2px); border-color: rgba(42, 171, 238, 0.55); box-shadow: 0 10px 26px rgba(0,0,0,0.35); }
+  .btn-tg:active { transform: translateY(0); }
   /* In-app браузер Instagram/Facebook: Google OAuth заблокирован — прячем кнопку
      Google, ошибку входа и разделитель «или», оставляем только email */
   html.inapp #googleBtn, html.inapp #gErr, html.inapp .m-or { display: none !important; }
@@ -1784,12 +1795,20 @@
       <input type="text" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Leave this empty" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0">
       <div id="emailErr" role="alert" style="display:none;color:#e8a48a;font-size:13.5px;margin:-4px 0 12px">Введите корректный e-mail</div>
       <button class="btn btn-gold" id="submitBtn" onclick="submitEmail()"><span>Получить ранний доступ</span></button>
+      <a class="btn btn-tg" href="https://t.me/hiyawrld_bot" target="_blank" rel="noopener" onclick="return tgGo(this, 'modal')">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.6c.3-1.2-.9-2.2-2-1.7L2.7 9.6c-1.2.5-1.1 2.2.1 2.6l4.7 1.5 1.8 5.6c.4 1.1 1.8 1.3 2.5.4l2.1-2.6 4.5 3.3c1 .7 2.4.2 2.6-1l3-14.8h-.1zM9.4 13l8.9-6.3c.3-.2.6.2.4.5l-6.9 7-.3 3.4-1.6-4.1c-.1-.2 0-.4.2-.5h-.7z"/></svg>
+        <span>Или займи место через Telegram</span>
+      </a>
       <div class="m-note"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Никакого спама — только одно письмо с приглашением</div>
     </div>
     <div class="ok">
       <div class="m-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
       <h3>Ты в списке</h3>
       <p id="okText">Напишем, как только запустимся в Алматы.</p>
+      <a class="btn btn-tg" href="https://t.me/hiyawrld_bot" target="_blank" rel="noopener" onclick="return tgGo(this, 'ok')">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.6c.3-1.2-.9-2.2-2-1.7L2.7 9.6c-1.2.5-1.1 2.2.1 2.6l4.7 1.5 1.8 5.6c.4 1.1 1.8 1.3 2.5.4l2.1-2.6 4.5 3.3c1 .7 2.4.2 2.6-1l3-14.8h-.1zM9.4 13l8.9-6.3c.3-.2.6.2.4.5l-6.9 7-.3 3.4-1.6-4.1c-.1-.2 0-.4.2-.5h-.7z"/></svg>
+        <span>Продублировать в Telegram</span>
+      </a>
       <button class="btn btn-gold" onclick="closeModal()"><span>Готово</span></button>
     </div>
   </div>
@@ -1963,6 +1982,22 @@
       okText.innerHTML = 'Ты <b>№' + window.hiyaWaitTotal() + ' из 300</b> — премиум навсегда. Напишем, как только запустимся в Алматы.';
     }
     showDone();
+  }
+
+  // Переход в Telegram-бота: тот же номер очереди, без набора почты.
+  // Из IG-вебвью t.me открывает нативный Telegram — заодно побег из вебвью.
+  // В start-метку кладём first-touch источник/креатив (только [A-Za-z0-9_-], ≤64).
+  function tgGo(a, area) {
+    try {
+      var ft = window.hiyaFT ? hiyaFT() : {};
+      var pay = [ft.source, ft.content]
+        .map(function (s) { return String(s || '').replace(/[^A-Za-z0-9_-]/g, ''); })
+        .filter(Boolean).join('__').slice(0, 64) || 'site';
+      a.href = 'https://t.me/hiyawrld_bot?start=' + pay;
+    } catch (e) {}
+    if (window.track) track('tg_click', { area: area });
+    if (window.ctag) ctag('tg', 'click');
+    return true;
   }
 
   function submitEmail() {

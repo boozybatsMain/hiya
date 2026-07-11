@@ -26,7 +26,7 @@ printf '%s' "$TG_BOT_TOKEN"   | firebase functions:secrets:set TG_BOT_TOKEN     
 printf '%s' "$WEBHOOK_SECRET" | firebase functions:secrets:set TG_WEBHOOK_SECRET --project "$PROJECT" --force --data-file=-
 
 echo "== 3/5 Деплой функции tg =="
-firebase deploy --only functions:tg --project "$PROJECT" --non-interactive
+firebase deploy --only functions:tg --project "$PROJECT" --non-interactive --force
 
 echo "== 4/5 Ставлю вебхук =="
 curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/setWebhook" \

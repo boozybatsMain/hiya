@@ -62,7 +62,8 @@ bash scripts/ga_report.sh '{"dateRanges":[{"startDate":"28daysAgo","endDate":"to
 `scroll_start`, `scroll_depth` (`percent`), `section_view` (`section`),
 `page_exit` (`engagement_seconds`, `max_scroll`, `last_section`),
 `ui_click` (`label`, `area`), `app_like_demo` (`name`), `intro_dismiss` (`via`),
-`inapp_browser`, `theater_replay`, `logo_to_top`.
+`inapp_browser`, `theater_replay`, `logo_to_top`,
+`tg_click` (`area`: `modal` | `ok` — переход в Telegram-бота).
 Плюс авто-события GA4 (enhanced measurement): `form_start`, `form_submit`, `scroll`, `session_start`, `first_visit`, `user_engagement`.
 
 **В каждое событие** дополнительно подмешиваются параметры first-touch атрибуции

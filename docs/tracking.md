@@ -87,6 +87,14 @@
 
 В Clarity сегмент «начал вводить почту и бросил» = тег `email=abandoned`.
 
+## Telegram-канал заявки
+
+Кнопки в модалке и на экране успеха ведут в бота `@hiyawrld_bot`
+(диплинк с first-touch меткой, см. [`telegram-bot.md`](telegram-bot.md)).
+События: `tg_click {area: modal|ok}` (GA) + тег `tg=click` (Clarity).
+Лиды из бота НЕ проходят через FormSubmit — они в Firestore `leads/tg:*`,
+но двигают тот же счётчик RTDB, что видит сайт.
+
 ## Где смотреть
 
 - GA-события/воронка — кодом через `scripts/ga_report.sh` (см. `google-analytics.md`).

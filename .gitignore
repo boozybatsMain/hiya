@@ -15,3 +15,7 @@ hiya-e8f5c-*.json
 
 # Local-only project context — держим на машине, НЕ в публичном репо
 docs/overview.md
+
+# Cloud Functions
+functions/node_modules/
+*.local

@@ -1,0 +1,14 @@
+{
+  "name": "hiya-functions",
+  "description": "hiya backend: Telegram-бот очереди раннего доступа (webhook)",
+  "private": true,
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "scripts": {
+    "test": "node test/handleUpdate.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

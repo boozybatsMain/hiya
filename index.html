@@ -1129,6 +1129,12 @@
     opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity .28s ease;
   }
+  /* «Спуск» после ухода клавиатуры: JS вешает .kb-settle только на время
+     спуска — клавиатурный паддинг уезжает транзишеном, scrollTop скользит
+     smooth-скроллом, и модалка съезжает вниз одним движением вместо двух
+     резких прыжков (мгновенный scrollTop=0 + мгновенное снятие паддинга).
+     На подъёме класса нет: подскролл к полю должен быть мгновенным. */
+  .overlay.kb-settle { transition: padding-bottom .3s cubic-bezier(.2,.7,.3,1); scroll-behavior: smooth; }
   /* блюр — на псевдоэлементе-подложке, а НЕ на самом .overlay: на iOS
      повторное включение backdrop-filter на родителе перестаёт отрисовывать
      его детей (модалка «исчезала» при втором открытии). Худший сценарий
@@ -1878,6 +1884,7 @@
     // открытии в сжатом вьюпорте модалка выезжала бы прокрученной (крестик за экраном)
     modal.scrollTop = 0;
     modal.style.paddingBottom = ''; // хвост клавиатурной подстройки прошлого открытия
+    modal.classList.remove('kb-settle'); // и незавершённого «спуска» — иначе транзишен затянет первый подскролл
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
     if (!modalHistoryArmed) {
@@ -2229,45 +2236,65 @@
     if (modal.scrollHeight <= modal.clientHeight) e.preventDefault();
   }, { passive: false });
 
-  // ── Клавиатура: ЕДИНЫЙ обработчик. Раньше их было два — честный
-  // visualViewport (kbAdjust) и фолбэк по фокусу поля — и они перетирали
-  // paddingBottom друг друга: в IG-вебвью vv иногда «видит» лишь панель
-  // автозаполнения (30–60px), событие vv прилетало после фолбэка, ставило
-  // маленький паддинг, scrollTop клампился — поле «залипало» под клавиатурой
-  // (чаще при быстрых тапах: больше vv-событий — больше перетираний).
-  // Теперь паддинг всегда = MAX(оценка по vv; 55% экрана при фокусе в поле),
-  // и обе ветки подскролла работают с одним состоянием.
+  // ── Клавиатура: единый обработчик с явным состоянием kbUp ──────────
+  // История граблей: (1) два конкурирующих обработчика перетирали паддинг;
+  // (2) iOS прячет клавиатуру, НЕ снимая фокус (свайп-дисмисс, «ушко» IG) —
+  // повторный тап по сфокусированному полю не даёт focus, подскролл не
+  // стартовал; (3) floor-паддинг был привязан к ФОКУСУ, а не к клавиатуре —
+  // после её ухода с живым фокусом любое vv-событие возвращало паддинг и
+  // модалку дёргало; (4) сброс «scrollTop=0 разом» — модалка резко падала.
+  // Теперь: kbUp = «клавиатурная сессия» (от намерения открыть до спуска),
+  // floor действует только при kbUp; спуск — settle(): транзишен паддинга +
+  // smooth-скролл (CSS .kb-settle). Закрытие клавиатуры ловим тремя путями:
+  // blur, честный vv (Safari: occluded упал <60) и рост window.innerHeight
+  // (IG-вебвью resize-режим: клавиатура меняет сам innerHeight, vv молчит).
   (function () {
     var vv = window.visualViewport;
     var email = document.getElementById('email');
+    // floor и подскролл нужны только там, где есть экранная клавиатура;
+    // на десктопе клик по полю не должен двигать модалку
+    var TOUCH = ('ontouchstart' in window) ||
+      (window.matchMedia && matchMedia('(pointer: coarse)').matches);
     var timers = [];
-    var lastOcc = 0; // последняя оценка occluded() из onVV — для детекта «клавиатура спряталась»
+    var kbUp = false;               // клавиатурная сессия: от тапа по полю до спуска
+    var lastOcc = 0;                // прошлый occluded() — детект закрытия по vv
+    var lastH = window.innerHeight; // прошлая высота вьюпорта — детект по resize (IG)
+    var settleT = 0;
     function occluded() { return vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0; }
     function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }
     function emailFocused() { return email && document.activeElement === email; }
 
-    // Общий расчёт запаса прокрутки — единственное место, где пишется паддинг.
-    // kbClosed=true: клавиатура точно спрятана — фокусный floor не применяем,
-    // иначе паддинг «от клавиатуры» жил бы, пока поле держит фокус.
-    function applyPad(kbClosed) {
+    // Единственное место, где пишется паддинг. Floor 55% экрана — гарантия
+    // запаса прокрутки там, где vv молчит (IG), но ТОЛЬКО пока kbUp: иначе
+    // после ухода клавиатуры с живым фокусом паддинг возвращался бы вечно.
+    function applyPad() {
       if (!modal.classList.contains('open')) { modal.style.paddingBottom = ''; return 0; }
       var occ = occluded();
       var pad = occ > 60 ? 24 + occ : 0; // 24 — родной padding .overlay
-      if (!kbClosed && emailFocused()) pad = Math.max(pad, Math.round(window.innerHeight * 0.55));
+      if (TOUCH && kbUp && emailFocused()) pad = Math.max(pad, Math.round(window.innerHeight * 0.55));
       modal.style.paddingBottom = pad ? pad + 'px' : '';
       return occ;
+    }
+
+    // Плавный спуск после ухода клавиатуры. Пока паддинг больше «нужного»,
+    // контент стоит на месте; затем scrollTop зажимается вслед за уезжающим
+    // паддингом, и в точке, где переполнение исчезает, top-выравнивание
+    // непрерывно переходит в центрирование margin:auto — одно движение вниз.
+    function settle() {
+      kbUp = false;
+      clearTimers();
+      modal.classList.add('kb-settle');
+      applyPad();
+      modal.scrollTop = 0;
+      clearTimeout(settleT);
+      settleT = setTimeout(function () { modal.classList.remove('kb-settle'); }, 450);
     }
 
     // Честный vv (Safari, Android): держим сфокусированный элемент над клавиатурой
     function onVV() {
       var occ = occluded();
       if (occ <= 60 && lastOcc > 60 && emailFocused()) {
-        // Клавиатура спряталась БЕЗ blur (свайп-дисмисс Safari, «ушко» IG):
-        // паддинг и scrollTop оставались «клавиатурными» — модалка дёргалась
-        // и «телепортировалась». Возвращаем оверлей в то же детерминированное
-        // состояние, что и blur-обработчик ниже.
-        applyPad(true);
-        modal.scrollTop = 0;
+        settle(); // клавиатура ушла БЕЗ blur (свайп-дисмисс) — спускаемся
       } else {
         applyPad();
         if (occ > 60) {
@@ -2283,34 +2310,51 @@
     if (vv) { vv.addEventListener('resize', onVV); vv.addEventListener('scroll', onVV); }
 
     if (!email) return;
-    // Вебвью-оверлей (IG iOS): vv молчит — серией проходов (гонка с нативным
-    // подскроллом iOS) держим поле в верхней трети видимой области
+    // Подскролл к полю: в IG vv молчит — серией проходов (гонка с нативным
+    // подскроллом iOS) держим поле в верхней трети ВИДИМОЙ области. Цель — в
+    // vv-координатах: при клавиатуре Safari панорамирует visual viewport
+    // (offsetTop > 0), и цель «28% от innerHeight» промахивалась бы.
     function lift() {
       if (!modal.classList.contains('open') || !emailFocused()) return;
+      modal.classList.remove('kb-settle'); // подъём — всегда мгновенный
       applyPad();
       var r = email.getBoundingClientRect();
-      var target = Math.round(window.innerHeight * 0.28);
+      var target = Math.round((vv ? vv.offsetTop : 0) + (vv ? vv.height : window.innerHeight) * 0.28);
       var diff = Math.round(r.top - target);
       if (Math.abs(diff) > 8) modal.scrollTop += diff; // корректируем в обе стороны
     }
     function scheduleLift() {
+      if (!TOUCH) return;
+      kbUp = true;
+      clearTimeout(settleT); modal.classList.remove('kb-settle');
       clearTimers();
       [150, 350, 600, 1000, 1600].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
     }
     email.addEventListener('focus', scheduleLift);
-    // iOS прячет клавиатуру, НЕ снимая фокус (свайп-дисмисс, «ушко» IG). Тап по
-    // всё ещё сфокусированному полю открывает клавиатуру заново, но focus не
-    // стреляет — серия lift не стартовала, поле оставалось под клавиатурой
-    // (главный кейс «повторный тап — скролл затупил»). Ловим такой тап отдельно;
-    // на первом тапе emailFocused() ещё false — двойного запуска нет.
+    // iOS прячет клавиатуру, НЕ снимая фокус. Тап по всё ещё сфокусированному
+    // полю открывает её заново, но focus не стреляет — серия lift не стартовала,
+    // поле оставалось под клавиатурой (кейс «повторный тап — скролл затупил»).
+    // Ловим такой тап отдельно; на первом тапе emailFocused() ещё false —
+    // двойного запуска нет.
     email.addEventListener('touchend', function () { if (emailFocused()) scheduleLift(); });
     email.addEventListener('blur', function () {
       clearTimers();
       timers.push(setTimeout(function () {
         if (emailFocused()) return; // фокус вернулся — не трогаем
-        applyPad();          // паддинг уходит (или остаётся, пока vv честно занят)
-        modal.scrollTop = 0; // детерминированный старт для следующего фокуса
+        settle();
       }, 80));
+    });
+    // IG-вебвью (resize-режим): рост вьюпорта >120px = клавиатура закрылась
+    // (в том числе без blur — vv-детект выше тут не срабатывает никогда),
+    // сжатие при kbUp — открылась: подтягиваем поле по фактической геометрии.
+    window.addEventListener('resize', function () {
+      var h = window.innerHeight, prev = lastH; lastH = h;
+      if (!TOUCH || !modal.classList.contains('open')) return;
+      if (h - prev > 120) {
+        if (emailFocused() || modal.style.paddingBottom || modal.scrollTop > 0) settle();
+      } else if (prev - h > 120 && emailFocused() && kbUp) {
+        lift();
+      }
     });
   })();
 

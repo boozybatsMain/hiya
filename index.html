@@ -2241,30 +2241,44 @@
     var vv = window.visualViewport;
     var email = document.getElementById('email');
     var timers = [];
+    var lastOcc = 0; // последняя оценка occluded() из onVV — для детекта «клавиатура спряталась»
     function occluded() { return vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0; }
     function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }
     function emailFocused() { return email && document.activeElement === email; }
 
-    // Общий расчёт запаса прокрутки — единственное место, где пишется паддинг
-    function applyPad() {
+    // Общий расчёт запаса прокрутки — единственное место, где пишется паддинг.
+    // kbClosed=true: клавиатура точно спрятана — фокусный floor не применяем,
+    // иначе паддинг «от клавиатуры» жил бы, пока поле держит фокус.
+    function applyPad(kbClosed) {
       if (!modal.classList.contains('open')) { modal.style.paddingBottom = ''; return 0; }
       var occ = occluded();
       var pad = occ > 60 ? 24 + occ : 0; // 24 — родной padding .overlay
-      if (emailFocused()) pad = Math.max(pad, Math.round(window.innerHeight * 0.55));
+      if (!kbClosed && emailFocused()) pad = Math.max(pad, Math.round(window.innerHeight * 0.55));
       modal.style.paddingBottom = pad ? pad + 'px' : '';
       return occ;
     }
 
     // Честный vv (Safari, Android): держим сфокусированный элемент над клавиатурой
     function onVV() {
-      var occ = applyPad();
-      if (occ > 60) {
-        var el = document.activeElement;
-        if (el && modalBox.contains(el)) {
-          var over = el.getBoundingClientRect().bottom - (vv.offsetTop + vv.height - 12);
-          if (over > 0) modal.scrollTop += over;
+      var occ = occluded();
+      if (occ <= 60 && lastOcc > 60 && emailFocused()) {
+        // Клавиатура спряталась БЕЗ blur (свайп-дисмисс Safari, «ушко» IG):
+        // паддинг и scrollTop оставались «клавиатурными» — модалка дёргалась
+        // и «телепортировалась». Возвращаем оверлей в то же детерминированное
+        // состояние, что и blur-обработчик ниже.
+        applyPad(true);
+        modal.scrollTop = 0;
+      } else {
+        applyPad();
+        if (occ > 60) {
+          var el = document.activeElement;
+          if (el && modalBox.contains(el)) {
+            var over = el.getBoundingClientRect().bottom - (vv.offsetTop + vv.height - 12);
+            if (over > 0) modal.scrollTop += over;
+          }
         }
       }
+      lastOcc = occ;
     }
     if (vv) { vv.addEventListener('resize', onVV); vv.addEventListener('scroll', onVV); }
 
@@ -2279,10 +2293,17 @@
       var diff = Math.round(r.top - target);
       if (Math.abs(diff) > 8) modal.scrollTop += diff; // корректируем в обе стороны
     }
-    email.addEventListener('focus', function () {
+    function scheduleLift() {
       clearTimers();
       [150, 350, 600, 1000, 1600].forEach(function (ms) { timers.push(setTimeout(lift, ms)); });
-    });
+    }
+    email.addEventListener('focus', scheduleLift);
+    // iOS прячет клавиатуру, НЕ снимая фокус (свайп-дисмисс, «ушко» IG). Тап по
+    // всё ещё сфокусированному полю открывает клавиатуру заново, но focus не
+    // стреляет — серия lift не стартовала, поле оставалось под клавиатурой
+    // (главный кейс «повторный тап — скролл затупил»). Ловим такой тап отдельно;
+    // на первом тапе emailFocused() ещё false — двойного запуска нет.
+    email.addEventListener('touchend', function () { if (emailFocused()) scheduleLift(); });
     email.addEventListener('blur', function () {
       clearTimers();
       timers.push(setTimeout(function () {

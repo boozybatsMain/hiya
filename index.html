@@ -544,6 +544,10 @@
     animation: wc-live 1.9s ease-in-out infinite;
   }
   @keyframes wc-live { 0%,100% { box-shadow: 0 0 0 0 rgba(99,212,147,0.55); } 50% { box-shadow: 0 0 0 5px rgba(99,212,147,0); } }
+  /* пока данные не пришли — пустые кружки-скелетоны: та же пульсация, что у числа,
+     без live-точки (она тоже «данные») */
+  .wc-avatars.wait .wc-av { animation: wc-wait 1s ease-in-out infinite; }
+  .wc-avatars.wait .wc-av-live::after { display: none; }
   .wc-joined { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
   .wc-joined b { color: var(--ink); font-weight: 800; font-variant-numeric: tabular-nums; }
 
@@ -1552,12 +1556,14 @@
 
   <div class="waitcount" id="waitcount" role="status" aria-live="polite">
     <span class="wc-halo" aria-hidden="true"></span>
-    <div class="wc-avatars wc-avatars-top" id="wcAvatars" aria-hidden="true">
-      <span class="wc-av">AK</span>
-      <span class="wc-av">DM</span>
-      <span class="wc-av">SN</span>
-      <span class="wc-av">EL</span>
-      <span class="wc-av wc-av-live">MB</span>
+    <!-- инициалы не в разметке: пока данные не пришли, кружки пустые (класс wait),
+         JS заполнит их вместе с числом -->
+    <div class="wc-avatars wc-avatars-top wait" id="wcAvatars" aria-hidden="true">
+      <span class="wc-av"></span>
+      <span class="wc-av"></span>
+      <span class="wc-av"></span>
+      <span class="wc-av"></span>
+      <span class="wc-av wc-av-live"></span>
     </div>
     <div class="wc-headline">
       <span class="wc-num" id="wcNum">···</span>
@@ -2578,21 +2584,30 @@
       }
       return sanitizeIni(ini);
     }
+    // До прихода данных инициалы не рисуем: кружки в разметке пустые, класс
+    // wait даёт им пульсацию-скелетон (см. CSS). Расчехляемся в тот же момент,
+    // что и число: onValue из базы, failsafe или локальный фолбэк.
+    var avWrap = document.getElementById('wcAvatars');
+    var avSettled = false;
     function renderAvatars() {
-      if (!avEls.length) return;
+      if (!avEls.length || !avSettled) return;
+      if (avWrap) avWrap.classList.remove('wait');
       var display = SEED.concat(realAv).slice(-avEls.length); // ряд всегда полный
       avEls.forEach(function (el, i) {
         el.textContent = display[i] || '';
         el.classList.toggle('wc-av-live', i === avEls.length - 1);
       });
     }
-    renderAvatars();
+    function settleAvatars() { avSettled = true; renderAvatars(); }
 
     var cfg = window.FIREBASE_CONFIG;
     if (cfg && cfg.databaseURL) {
       if (numEl) numEl.classList.add('wait');
       // если база не ответила за 3.5с — показываем базовое число, не висим
       var failsafe = setTimeout(function () { if (!settled) { settled = true; render(); } }, 3500);
+      // у аватарок свой failsafe: главный снимается приходом счётчика, а recent
+      // может ещё ехать (или не приехать вовсе) — тогда через 3.5с покажем сид
+      var avFailsafe = setTimeout(settleAvatars, 3500);
       var loadFirebase = async function () {
         try {
           var appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
@@ -2605,6 +2620,8 @@
             var v = snap.val();
             if (typeof v === 'number') signups = Math.max(signups, v);
             settled = true; clearTimeout(failsafe); render();
+            // аватарки тут НЕ расчехляем: их данные (recent) едут отдельной
+            // подпиской — иначе на миг промаргивает сид, а потом реальные
           });
           // Клиент в базу НЕ пишет (rules: .write false) — счётчик двигает
           // Cloud Function /lead и Telegram-бот. Здесь только оптимистичный
@@ -2617,16 +2634,17 @@
           dbMod.onValue(dbMod.query(recentRef, dbMod.limitToLast(avEls.length || 5)), function (snap) {
             var arr = [];
             snap.forEach(function (ch) { var i = sanitizeIni(ch.val() && ch.val().i); if (i) arr.push(i); });
-            realAv = arr; renderAvatars();
+            clearTimeout(avFailsafe);
+            realAv = arr; settleAvatars();
           });
           // Аватарку в базу пушит Function/бот (initialsFromEmail продублирована
           // на сервере) — тут только мгновенный локальный рендер.
           window.hiyaAddAvatar = function (email) {
             var ini = initialsFromEmail(email); if (!ini) return;
-            realAv = realAv.concat(ini).slice(-(avEls.length || 5)); renderAvatars(); // optimistic
+            realAv = realAv.concat(ini).slice(-(avEls.length || 5)); settleAvatars(); // optimistic
           };
         } catch (e) {
-          settled = true; clearTimeout(failsafe);
+          settled = true; clearTimeout(failsafe); clearTimeout(avFailsafe);
           signups = lget(); render();
           window.hiyaBump = function () { signups = lget() + 1; lset(signups); render(); };
           setupLocalAvatars();
@@ -2646,7 +2664,7 @@
     // без базы аватарки живут локально (у каждого браузера свои) — не синкаются
     function setupLocalAvatars() {
       try { realAv = JSON.parse(localStorage.getItem(AKEY) || '[]') || []; } catch (e) { realAv = []; }
-      renderAvatars();
+      settleAvatars(); // без базы ждать нечего — показываем сразу
       window.hiyaAddAvatar = function (email) {
         var ini = initialsFromEmail(email); if (!ini) return;
         realAv = realAv.concat(ini).slice(-(avEls.length || 5)); renderAvatars();

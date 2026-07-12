@@ -5,6 +5,22 @@ const BASE = 151;
 const TARGET = 300;
 const OWNER_CHAT_ID = 406663035; // @oddbear — нотификации о каждой заявке
 
+// GA4: у бота нет браузера, события шлём Measurement Protocol'ом (index.js).
+// Measurement ID зеркалит index.html; api_secret — в Secret Manager (GA_API_SECRET).
+const GA_MEASUREMENT_ID = 'G-ZBFLNG3JNW';
+
+// ft-атрибуция из метки диплинка t.me/...?start=<метка>: сайт собирает её как
+// `<source>__<content>` (docs/tracking.md), реферальная ссылка — `ref_<tg_id>`.
+// Разворачиваем обратно в ft_source/ft_content — те же custom dimensions,
+// которыми размечены события сайта, чтобы кампании склеивались в одном отчёте.
+function ftFromPayload(payload) {
+  const p = String(payload || '');
+  if (/^ref_\d+$/.test(p)) return { ft_source: 'referral', ft_content: p };
+  const i = p.indexOf('__');
+  if (i > 0) return { ft_source: p.slice(0, i), ft_content: p.slice(i + 2) };
+  return { ft_source: p || 'unknown', ft_content: '' };
+}
+
 function sanitizeIni(s) {
   return String(s || '').replace(/[^0-9A-Za-zА-Яа-яЁё]/g, '').slice(0, 2).toUpperCase();
 }
@@ -46,4 +62,4 @@ async function takePlace(deps, initials) {
   return { place: BASE + count, total: BASE + count };
 }
 
-module.exports = { BASE, TARGET, OWNER_CHAT_ID, sanitizeIni, initialsFromName, initialsFromEmail, takePlace };
+module.exports = { BASE, TARGET, OWNER_CHAT_ID, GA_MEASUREMENT_ID, sanitizeIni, initialsFromName, initialsFromEmail, takePlace, ftFromPayload };

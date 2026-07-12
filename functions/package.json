@@ -3,7 +3,7 @@
   "description": "hiya backend: Telegram-бот очереди раннего доступа (webhook)",
   "private": true,
   "main": "index.js",
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "scripts": {
     "test": "node test/handleUpdate.test.js && node test/handleLead.test.js"
   },

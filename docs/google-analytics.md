@@ -87,6 +87,15 @@ bash scripts/ga_report.sh '{"dateRanges":[{"startDate":"28daysAgo","endDate":"to
 > лишь в DebugView / BigQuery-экспорте. Регистрировать заранее: задним числом
 > данные в измерение не попадают.
 
+## События Telegram-бота (Measurement Protocol)
+
+Бот @hiyawrld_bot шлёт события сервером (Measurement Protocol, тот же
+Measurement ID): `generate_lead` (`method=telegram`), `tg_start_repeat`,
+`tg_invite`, `tg_place_check` — с `ft_source`/`ft_content` из метки диплинка.
+Подробности и секрет — в [`telegram-bot.md`](telegram-bot.md). MP-события не
+видны в Realtime и приходят в отчёты с задержкой до пары часов; сессий/источника
+трафика у них нет — смотреть по custom dimensions `method`/`ft_*`.
+
 ## Смежные API того же сервис-аккаунта
 - **GA Admin API** (`analyticsadmin.googleapis.com`) — читать/менять настройки ресурса,
   custom dimensions, data streams (нужен scope `analytics.edit` — поменять `SCOPE` в скрипте).

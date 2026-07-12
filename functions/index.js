@@ -12,11 +12,41 @@ const { handleLead } = require('./lib/handleLead');
 
 const TG_BOT_TOKEN = defineSecret('TG_BOT_TOKEN');
 const TG_WEBHOOK_SECRET = defineSecret('TG_WEBHOOK_SECRET');
+const GA_API_SECRET = defineSecret('GA_API_SECRET'); // Measurement Protocol «tg-bot» (GA Admin → Data Streams)
 
 admin.initializeApp(); // FIREBASE_CONFIG в рантайме содержит databaseURL
 
 function deps() {
   return { fs: admin.firestore(), rtdb: admin.database(), now: () => Date.now() };
+}
+
+// События бота в GA4 через Measurement Protocol: у бота нет браузера, а без
+// этого воронка обрывалась на tg_click с сайта. handleUpdate возвращает чистый
+// список { client_id, name, params } — сеть только здесь. engagement_time_msec
+// обязателен, иначе GA не считает пользователя активным и прячет событие из
+// отчётов. Ошибки не роняют вебхук: аналитика — best effort.
+const { GA_MEASUREMENT_ID } = require('./lib/common');
+
+async function gaSend(events) {
+  if (!events || !events.length) return;
+  let secret = '';
+  try { secret = GA_API_SECRET.value(); } catch (e) { /* секрет не подключён — молча пропускаем */ }
+  if (!secret) return;
+  await Promise.all(events.map(async (ev) => {
+    try {
+      await fetch('https://www.google-analytics.com/mp/collect?measurement_id=' +
+        GA_MEASUREMENT_ID + '&api_secret=' + encodeURIComponent(secret), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: ev.client_id,
+          events: [{ name: ev.name, params: Object.assign({ engagement_time_msec: 1 }, ev.params) }]
+        })
+      });
+    } catch (e) {
+      console.error('ga mp error', e); // MP отвечает 2xx даже на мусор — ловим только сеть
+    }
+  }));
 }
 
 async function tgSend(msg) {
@@ -36,7 +66,7 @@ async function tgSend(msg) {
 exports.tg = onRequest(
   {
     region: 'us-central1', // рядом с RTDB (hiya-e8f5c-default-rtdb — us-central)
-    secrets: [TG_BOT_TOKEN, TG_WEBHOOK_SECRET],
+    secrets: [TG_BOT_TOKEN, TG_WEBHOOK_SECRET, GA_API_SECRET],
     maxInstances: 3,
     invoker: 'public',
   },
@@ -51,9 +81,10 @@ exports.tg = onRequest(
       return;
     }
     try {
-      const { reply, notify } = await handleUpdate(req.body, deps());
+      const { reply, notify, ga } = await handleUpdate(req.body, deps());
       await tgSend(reply);
       await tgSend(notify);
+      await gaSend(ga);
     } catch (e) {
       console.error('tg update failed', e);
     }

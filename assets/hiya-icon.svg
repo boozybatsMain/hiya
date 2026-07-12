@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="hiya app icon">
+  <defs>
+    <linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="150" y1="180" x2="330" y2="440">
+      <stop offset="0" stop-color="#f7ead0"/>
+      <stop offset="0.38" stop-color="#ecd6a6"/>
+      <stop offset="0.64" stop-color="#e2be7f"/>
+      <stop offset="1" stop-color="#d9b16a"/>
+    </linearGradient>
+    <radialGradient id="rayfadet" gradientUnits="userSpaceOnUse" cx="256" cy="183" r="168">
+      <stop offset="0" stop-color="#ffcf7a" stop-opacity="0.08"/>
+      <stop offset="0.55" stop-color="#ffcf7a" stop-opacity="0.03"/>
+      <stop offset="1" stop-color="#ffcf7a" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="raymaskt">
+      <rect x="84" y="11" width="345" height="345" fill="white"/>
+      <circle cx="256" cy="183" r="64" fill="none" stroke="black" stroke-width="23"/>
+      <circle cx="256" cy="183" r="109" fill="none" stroke="black" stroke-width="28"/>
+    </mask>
+    <radialGradient id="warm" cx="0.5" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="#1d1810"/>
+      <stop offset="1" stop-color="#0a0806"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#warm)"/>
+  <path d="M256,183 L420.0,220.9 L370.8,306.1 Z M256,183 L305.2,343.9 L206.8,343.9 Z M256,183 L141.2,306.1 L92.0,220.9 Z M256,183 L92.0,145.1 L141.2,59.9 Z M256,183 L206.8,22.1 L305.2,22.1 Z M256,183 L370.8,59.9 L420.0,145.1 Z" fill="url(#rayfadet)" mask="url(#raymaskt)"/>
+  <circle cx="256" cy="183" r="64" fill="none" stroke="#e08830" stroke-width="23" opacity="0.45"/>
+  <circle cx="256" cy="183" r="109" fill="none" stroke="#e08830" stroke-width="28" opacity="0.1"/>
+  <g fill="url(#gold)">
+    <path transform="translate(152.32 492) scale(0.166331 -0.166331)" d="M445.6819645166397 588.1776812076569V0H100.00859808921814V1490H443.99300238490105V787.2223456501961H395.730998262763Q443.5397778302431 925.2044319659472 535.2597266957164 1008.0068551972508Q626.9796755611897 1090.8092784285545 777.6733056604862 1090.8092784285545Q893.5223060399294 1090.8092784285545 975.9845039844513 1040.678102619946Q1058.4467019289732 990.5469268113375 1102.5310856103897 897.1824679896235Q1146.6154692918062 803.8180091679096 1146.6154692918062 674.2492941617966V0H800.8887700736523V603.8219113498926Q800.8887700736523 697.5813810229301 755.5067881941795 747.8878199607134Q710.1248063147068 798.1942588984966 626.8674595803022 798.1942588984966Q572.1699617505074 798.1942588984966 531.3257851824164 775.0876908376813Q490.4816086143255 751.981122776866 468.0817865654826 705.3836065009236Q445.6819645166397 658.7860902249813 445.6819645166397 588.1776812076569Z"/>
+  </g>
+  <circle cx="256" cy="183" r="40" fill="#ffe8a3"/>
+</svg>

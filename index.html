@@ -2292,7 +2292,13 @@
     var timers = [];
     var kbUp = false;               // клавиатурная сессия: от тапа по полю до спуска
     var lastOcc = 0;                // прошлый occluded() — детект закрытия по vv
-    var lastH = window.innerHeight; // прошлая высота вьюпорта — детект по resize (IG)
+    // Прошлая высота вьюпорта — детект клавиатуры по resize (IG).
+    // НЕ читаем innerHeight на eval'е: скрипт стоит посреди документа, вёрстка
+    // «грязная», и это чтение форсировало полный layout страницы (~270 мс на
+    // слабом мобиле) прямо в критическом пути первой отрисовки — layout считался
+    // дважды. Читаем после первого кадра: там он уже посчитан, чтение бесплатно.
+    var lastH = 0;
+    requestAnimationFrame(function () { if (!lastH) lastH = window.innerHeight; });
     var settleT = 0;
     function occluded() { return vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0; }
     function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }

@@ -78,11 +78,26 @@
       if (mt === 'off') localStorage.setItem('hiya_no_ga', '1');
       if (mt === 'on')  localStorage.removeItem('hiya_no_ga');
       optedOut = localStorage.getItem('hiya_no_ga') === '1';
-      if (mt === 'off') alert('✓ Готово. Заходы с ЭТОГО браузера больше НЕ считаются в аналитике.');
-      else if (mt === 'on') alert('Заходы с этого браузера снова считаются в аналитике.');
-      else if (mt === 'status') alert(optedOut
-        ? 'Статус: ты ИСКЛЮЧЁН ✓ — этот браузер НЕ попадает в аналитику.'
-        : 'Статус: ты УЧИТЫВАЕШЬСЯ — этот браузер идёт в аналитику. Открой ?mytraffic=off, чтобы исключить.');
+      // Не alert(): блокирующие модалки вешают агентов и автотесты, заходящих с флагом.
+      var mtMsg = mt === 'off' ? '✓ Готово. Заходы с ЭТОГО браузера больше НЕ считаются в аналитике.'
+        : mt === 'on' ? 'Заходы с этого браузера снова считаются в аналитике.'
+        : mt === 'status' ? (optedOut
+          ? 'Статус: ты ИСКЛЮЧЁН ✓ — этот браузер НЕ попадает в аналитику.'
+          : 'Статус: ты УЧИТЫВАЕШЬСЯ — этот браузер идёт в аналитику. Открой ?mytraffic=off, чтобы исключить.')
+        : null;
+      if (mtMsg) {
+        console.log('[mytraffic] ' + mtMsg);
+        document.addEventListener('DOMContentLoaded', function () {
+          var el = document.createElement('div');
+          el.textContent = mtMsg;
+          el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);' +
+            'max-width:min(92vw,480px);padding:12px 18px;border-radius:12px;' +
+            'background:rgba(20,20,28,.92);color:#fff;font:14px/1.45 system-ui,sans-serif;' +
+            'box-shadow:0 8px 28px rgba(0,0,0,.35);z-index:99999;pointer-events:none;';
+          document.body.appendChild(el);
+          setTimeout(function () { el.remove(); }, 6000);
+        });
+      }
     } catch (e) {}
     if (optedOut) console.log('[GA] твой трафик ИСКЛЮЧЁН на этом устройстве (hiya_no_ga=1)');
 
@@ -2838,7 +2853,11 @@
   })();
 
   // ── Motion: parallax + phone float/rotate + particles (one rAF loop)
-  (function(){
+  // Запуск отложен на кадр ПОСЛЕ первой отрисовки (двойной rAF): спаун боке,
+  // чтение размеров и старт цикла не должны сидеть в блокирующей задаче
+  // парсинга — на слабых телефонах из IG-вебвью это двигало первый кадр
+  // и растягивало ответ на ранний тап. Декору можно опоздать на кадр.
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Боке-параллакс: спауним два слоя кружков ДО сбора pItems, чтобы их
@@ -2882,6 +2901,13 @@
     var phone = document.querySelector('.ip3d-stage3d');
     var heroEl = document.querySelector('.hero');
     var baseRX = 5, baseRY = -19, baseRZ = 1;
+    // Высота hero кешируется: offsetHeight внутри frame() — принудительный
+    // layout 60 раз/с на слабых телефонах из IG-вебвью. Высота зависит только
+    // от --hero-vh (фиксирована на загрузке) — пересчёт лишь на resize.
+    var heroH = 0;
+    function measureHero() { heroH = (heroEl && heroEl.offsetHeight) || window.innerHeight; }
+    measureHero();
+    window.addEventListener('resize', measureHero, { passive: true });
 
     // Particles
     var canvas = document.querySelector('.particles');
@@ -2925,19 +2951,23 @@
     }
 
     var t0 = performance.now(), running = true;
+    var lastPar = -1; // scrollY последней записи параллакса
     function frame(now){
       var t = (now - t0) / 1000;
 
-      // parallax
-      for (var i = 0; i < pItems.length; i++) {
-        pItems[i].el.style.transform = 'translate3d(0,' + (scrollY * pItems[i].s).toFixed(2) + 'px,0)';
+      // parallax: трансформы зависят только от scrollY — пишем лишь при его
+      // изменении, а не каждый кадр (лишние записи держали композитор занятым)
+      if (scrollY !== lastPar) {
+        lastPar = scrollY;
+        for (var i = 0; i < pItems.length; i++) {
+          pItems[i].el.style.transform = 'translate3d(0,' + (scrollY * pItems[i].s).toFixed(2) + 'px,0)';
+        }
+        if (bgPar) bgPar.style.transform = 'translate3d(0,' + (-scrollY * 0.04).toFixed(1) + 'px,0) scale(1.12)';
       }
-      if (bgPar) bgPar.style.transform = 'translate3d(0,' + (-scrollY * 0.04).toFixed(1) + 'px,0) scale(1.12)';
 
       // phone: gentle float + scroll-driven rotation (reveals depth)
       if (phone) {
-        var heroH = (heroEl && heroEl.offsetHeight) || window.innerHeight;
-        var prog = Math.max(0, Math.min(1.15, scrollY / heroH));  // 0..~1 through hero
+        var prog = Math.max(0, Math.min(1.15, scrollY / (heroH || window.innerHeight)));  // 0..~1 through hero
         var ry = baseRY + prog * 22 + Math.sin(t * 0.55) * 1.4;    // turn as you scroll
         var rx = baseRX + Math.sin(t * 0.8) * 1.3;
         var fy = Math.sin(t * 0.9) * 7;
@@ -2967,7 +2997,7 @@
       running = document.visibilityState === 'visible';
       if (running) { t0 = performance.now(); requestAnimationFrame(frame); }
     });
-  })();
+  }); });
 
   // ── Engagement analytics: scroll depth, click map, time-on-page & exit ──
   (function () {

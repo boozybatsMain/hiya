@@ -108,10 +108,23 @@ Runtime поднят до Node 22 при деплое 12.07.2026.
 Секрет MP: GA Admin → Data Streams → «Hiya» → Measurement Protocol API secrets →
 `tg-bot` (создан Admin API; для этого на ресурсе подтверждён User Data Collection
 Acknowledgement 12.07.2026). Значение — в Firebase Secret Manager
-(`GA_API_SECRET`) и локально `~/.config/hiya/ga-mp-secret.txt` (вне репо).
-Известная особенность: MP-события НЕ видны в Realtime-отчёте, в обычные отчёты
-приходят с задержкой до пары часов. Валидация формата —
-`https://www.google-analytics.com/debug/mp/collect` (тот же URL с `/debug`).
+(`GA_API_SECRET`, версия 2 — чистая) и локально `~/.config/hiya/ga-mp-secret.txt`
+(вне репо; 18.07.2026 из файла убран хвостовой `\n`; при перезаливке секретов
+всегда `printf '%s'`/`tr -d '\n'`, НИКОГДА не `cat`/`echo` — см. инцидент ниже).
+
+**Инцидент 12–18.07.2026 — все MP-события бота молча терялись.** Секрет попал в
+Secret Manager с хвостовым `\n` (залит `cat`'ом), `encodeURIComponent` давал
+`api_secret=...%0A`, GA отвечала 204 и выбрасывала каждое событие: неверный
+api_secret неотличим от успеха ни по HTTP-статусу, ни по `/debug/mp/collect`
+(валидатор проверяет только payload, секрет — нет). Потеряны все `generate_lead`
+бота 12–18.07 (лиды №165–168). Фикс: секрет перезалит без `\n` (v2) +
+`gaSend`/`capiToken` теперь делают `.trim()` + `gaSend` логирует
+`ga mp <event> <status>` в Cloud Logging. Проверка доставки после любых правок:
+послать событие и смотреть **Realtime** (Data API `runRealtimeReport`) — MP-события
+там ПОЯВЛЯЮТСЯ за 1–2 минуты (проверено; старая запись «MP не видны в Realtime»
+была неверна — события не доходили вовсе). Валидация формата —
+`https://www.google-analytics.com/debug/mp/collect` (тот же URL с `/debug`),
+но помни: пустые `validationMessages` ≠ доставка.
 
 ## /lead — приём заявок с сайта (добавлен 11.07.2026)
 

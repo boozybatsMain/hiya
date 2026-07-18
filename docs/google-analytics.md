@@ -92,9 +92,19 @@ bash scripts/ga_report.sh '{"dateRanges":[{"startDate":"28daysAgo","endDate":"to
 Бот @hiyawrld_bot шлёт события сервером (Measurement Protocol, тот же
 Measurement ID): `generate_lead` (`method=telegram`), `tg_start_repeat`,
 `tg_invite`, `tg_place_check` — с `ft_source`/`ft_content` из метки диплинка.
-Подробности и секрет — в [`telegram-bot.md`](telegram-bot.md). MP-события не
-видны в Realtime и приходят в отчёты с задержкой до пары часов; сессий/источника
-трафика у них нет — смотреть по custom dimensions `method`/`ft_*`.
+Подробности и секрет — в [`telegram-bot.md`](telegram-bot.md). MP-события
+**видны в Realtime через 1–2 минуты** (Data API `runRealtimeReport` — быстрый
+способ проверить доставку; measurement id/api_secret Realtime-запросу не нужны,
+только сервис-аккаунт). В стандартные отчёты приходят с обычным лагом обработки.
+Сессий/источника трафика у них нет — смотреть по custom dimensions `method`/`ft_*`.
+
+**Грабли MP (инцидент 12–18.07.2026, см. telegram-bot.md):** `/mp/collect`
+отвечает 204 ВСЕГДА — в т.ч. при неверном `api_secret` (например, с хвостовым
+`\n` из Secret Manager → `%0A` в URL): события при этом молча выбрасываются.
+`/debug/mp/collect` секрет тоже НЕ проверяет (пустые `validationMessages` ≠
+доставка). Единственная быстрая проверка доставки — Realtime. События с
+`ft_source=debug_probe` и client_id `9999000xx.1` — отладочные пробы, в отчётах
+их фильтровать.
 
 ## Смежные API того же сервис-аккаунта
 - **GA Admin API** (`analyticsadmin.googleapis.com`) — читать/менять настройки ресурса,

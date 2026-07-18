@@ -13,7 +13,8 @@
 // ga — события для GA4 Measurement Protocol (index.js отправляет), формат
 // { client_id, name, params }. Логика остаётся чистой — сеть снаружи.
 
-const { BASE, TARGET, OWNER_CHAT_ID, initialsFromName, takePlace, ftFromPayload } = require('./common');
+const { BASE, TARGET, OWNER_CHAT_ID, initialsFromName, takePlace, ftFromPayload, handoffFromPayload } = require('./common');
+const { leadEvent, fbcFromClid } = require('./capi');
 
 // client_id GA для tg-пользователя: стабильный «X.Y»-вид, чтобы события
 // одного человека склеивались, но с site-клиентами не пересекались
@@ -26,7 +27,15 @@ async function ensureLead(deps, user, payload) {
 
   const snap = await ref.get();
   if (snap.exists && snap.get('place')) {
-    return { place: snap.get('place'), isNew: false };
+    // start_payload/capi_sent_at нужны выше: повторный /start — второй шанс
+    // забрать handoff, если при первом его документ ещё не был записан (гонка
+    // keepalive-fetch против клика Start).
+    return {
+      place: snap.get('place'),
+      isNew: false,
+      start_payload: snap.get('start_payload') || '',
+      capi_sent_at: snap.get('capi_sent_at') || null
+    };
   }
 
   if (!snap.exists) {
@@ -81,6 +90,26 @@ function inviteMarkup(userId) {
         '&text=' + encodeURIComponent(SHARE_TEXT)
     }]]
   };
+}
+
+// Handoff браузерных идентификаторов из tgGo (index.html):
+// Firestore handoffs/<код> → {fbclid, fbc, fbp, ip, ua, landing, area, …}.
+// Документ НЕ удаляем, а помечаем consumed_at: replay не страшен (event_id
+// бот-лида стабилен — Meta дедуплицирует), зато повторный /start может
+// дочитать документ, который при первом /start ещё не успел записаться
+// (keepalive-fetch из tgGo против клика Start — реальная гонка). Мусор
+// подчищает уборка в saveHandoff (index.js).
+async function takeHandoff(deps, code) {
+  try {
+    const ref = deps.fs.collection('handoffs').doc(code);
+    const snap = await ref.get();
+    if (!snap.exists) return null;
+    const data = snap.data();
+    try { await ref.set({ consumed_at: deps.now() }, { merge: true }); } catch (e) {}
+    return data || null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // ref_<id> из метки диплинка; своя же ссылка (self-invite) не считается.
@@ -150,6 +179,33 @@ async function handleUpdate(update, deps) {
     if (referrer) {
       ga.push({ client_id: gaClientId(refId), name: 'tg_invite', params: { method: 'telegram' } });
     }
+    // Meta CAPI: у бота нет пикселя — Lead шлёт сервер (index.js отправляет,
+    // после успеха ставит на лиде capi_sent_at). Идентификаторы берём из
+    // handoff'а сайта; без них событию нечем матчиться с кликом по рекламе,
+    // поэтому прямые/реферальные заходы не репортим. Повторный /start — ретрай
+    // той же отправки (код хранится в start_payload лида), пока не отправлено.
+    // area='ok' — кнопка «Продублировать в Telegram» с экрана успеха: email-Lead
+    // этого человека уже отрепорчен, второй Lead не шлём.
+    const capi = [];
+    let capiDoc = '';
+    if (r.isNew || !r.capi_sent_at) {
+      const code = handoffFromPayload(payload) || (r.isNew ? '' : handoffFromPayload(r.start_payload));
+      const h = code ? await takeHandoff(deps, code) : null;
+      if (h && h.area !== 'ok' && (h.fbc || h.fbclid || h.fbp)) {
+        capi.push(leadEvent({
+          event_id: 'tglead_' + msg.from.id,
+          ts: deps.now(),
+          landing: h.landing || '/',
+          tg_user_id: msg.from.id,
+          fbc: h.fbc || fbcFromClid(h.fbclid, h.ts || h.created_at),
+          fbp: h.fbp || '',
+          ip: h.ip || '',
+          ua: h.ua || '',
+          method: 'telegram'
+        }));
+        capiDoc = 'tg:' + msg.from.id;
+      }
+    }
     return {
       reply: {
         chat_id: chatId,
@@ -157,7 +213,9 @@ async function handleUpdate(update, deps) {
         reply_markup: inviteMarkup(msg.from.id)
       },
       notify: r.isNew ? ownerNote(msg.from, payload, r, referrer) : null,
-      ga: ga
+      ga: ga,
+      capi: capi,
+      capiDoc: capiDoc
     };
   }
 

@@ -7,6 +7,7 @@ function makeStubs(initialCount) {
         get: async () => ({
           exists: !!state.docs[id],
           get: (f) => (state.docs[id] || {})[f],
+          data: () => state.docs[id],
         }),
         create: async (data) => {
           if (state.docs[id]) { const e = new Error('exists'); e.code = 6; throw e; }
@@ -15,6 +16,7 @@ function makeStubs(initialCount) {
         set: async (data) => {
           state.docs[id] = Object.assign({}, state.docs[id], data);
         },
+        delete: async () => { delete state.docs[id]; },
       }),
     }),
   };

@@ -13,8 +13,21 @@ const GA_MEASUREMENT_ID = 'G-ZBFLNG3JNW';
 // `<source>__<content>` (docs/tracking.md), реферальная ссылка — `ref_<tg_id>`.
 // Разворачиваем обратно в ft_source/ft_content — те же custom dimensions,
 // которыми размечены события сайта, чтобы кампании склеивались в одном отчёте.
+//
+// Хвост `__hx<8 симв.>` — handoff браузерных идентификаторов (tgGo в index.html
+// кладёт fbclid/_fbc/_fbp в Firestore handoffs/<код>, диплинк несёт только
+// код: лимит start-метки — 64 символа). Отрезаем его ДО разбора ft-метки.
+// Префикс «hx» жёсткий, чтобы регексп не съедал легитимные utm_content,
+// случайно похожие на код (например «holiday01»).
+const HANDOFF_RE = /__(hx[a-z0-9]{8})$/;
+
+function handoffFromPayload(payload) {
+  const m = HANDOFF_RE.exec(String(payload || ''));
+  return m ? m[1] : '';
+}
+
 function ftFromPayload(payload) {
-  const p = String(payload || '');
+  const p = String(payload || '').replace(HANDOFF_RE, '');
   if (/^ref_\d+$/.test(p)) return { ft_source: 'referral', ft_content: p };
   const i = p.indexOf('__');
   if (i > 0) return { ft_source: p.slice(0, i), ft_content: p.slice(i + 2) };
@@ -62,4 +75,4 @@ async function takePlace(deps, initials) {
   return { place: BASE + count, total: BASE + count };
 }
 
-module.exports = { BASE, TARGET, OWNER_CHAT_ID, GA_MEASUREMENT_ID, sanitizeIni, initialsFromName, initialsFromEmail, takePlace, ftFromPayload };
+module.exports = { BASE, TARGET, OWNER_CHAT_ID, GA_MEASUREMENT_ID, sanitizeIni, initialsFromName, initialsFromEmail, takePlace, ftFromPayload, handoffFromPayload };

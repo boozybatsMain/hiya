@@ -68,6 +68,45 @@ function upd(text, userId) {
   assert(gaRef.ga[0].params.ft_source === 'referral', 'ga ft referral');
   assert(gaRef.ga[1].client_id === '777.1', 'invite credited to referrer client');
 
+  // 2д. Handoff: метка с хвостом __hx<код> — ft разбирается без хвоста,
+  // документ handoffs/<код> помечается consumed_at, в capi уходит Lead с fbc/fbp
+  state.docs['hxabc12xyz'] = {
+    fbclid: 'IwAR_test_clid', fbc: 'fb.1.1700000000000.IwAR_test_clid', fbp: 'fb.1.1700000000000.111',
+    ip: '1.2.3.4', ua: 'Mozilla/5.0 Test', landing: '/?utm_source=ig', created_at: 900,
+  };
+  const rHand = await handleUpdate(upd('/start ig__creative-02d-hero-honest__hxabc12xyz', 2001), deps);
+  assert(rHand.ga[0].params.ft_source === 'ig' && rHand.ga[0].params.ft_content === 'creative-02d-hero-honest',
+    'ft parsed without handoff tail: ' + JSON.stringify(rHand.ga[0].params));
+  assert(rHand.capi.length === 1, 'capi lead present');
+  assert(rHand.capiDoc === 'tg:2001', 'capi doc id returned');
+  assert(rHand.capi[0].event_name === 'Lead' && rHand.capi[0].event_id === 'tglead_2001', 'capi event id');
+  assert(rHand.capi[0].user_data.fbc === 'fb.1.1700000000000.IwAR_test_clid', 'capi fbc from handoff');
+  assert(rHand.capi[0].user_data.fbp && rHand.capi[0].user_data.client_ip_address === '1.2.3.4', 'capi fbp/ip');
+  assert(rHand.capi[0].custom_data.method === 'telegram', 'capi method');
+  assert(state.docs['hxabc12xyz'] && state.docs['hxabc12xyz'].consumed_at === 1000, 'handoff marked consumed, not deleted');
+
+  // 2е. Гонка: /start раньше записи handoff-документа — capi пуст, но повторный
+  // /start ДОБИРАЕТ handoff по коду из start_payload, пока нет capi_sent_at
+  const rHand2 = await handleUpdate(upd('/start ig__creative-01__hxzzzzzzzz', 2002), deps);
+  assert(rHand2.reply.text.includes('Готово'), 'lead created without handoff doc');
+  assert(rHand2.capi.length === 0, 'no capi while handoff doc missing');
+  state.docs['hxzzzzzzzz'] = { fbclid: 'IwAR_late', landing: '/', created_at: 950 };
+  const rHand2b = await handleUpdate(upd('/start', 2002), deps);
+  assert(rHand2b.capi.length === 1 && rHand2b.capi[0].event_id === 'tglead_2002', 'repeat /start retries handoff');
+  state.docs['tg:2002'].capi_sent_at = 123; // index.js ставит после успешной отправки
+  const rHand2c = await handleUpdate(upd('/start', 2002), deps);
+  assert(rHand2c.capi.length === 0, 'no re-send after capi_sent_at');
+
+  // 2ж. Прямой заход без handoff'а — capi пуст (нечем матчиться)
+  const rHand3 = await handleUpdate(upd('/start', 2003), deps);
+  assert(rHand3.capi.length === 0, 'no capi for direct start');
+
+  // 2з. area='ok' (кнопка с экрана успеха после email-заявки) — второй Lead
+  // того же человека не шлём
+  state.docs['hxokokokok'] = { fbclid: 'IwAR_ok', area: 'ok', landing: '/', created_at: 960 };
+  const rHand4 = await handleUpdate(upd('/start ig__creative-01__hxokokokok', 2004), deps);
+  assert(rHand4.capi.length === 0, 'no capi for area=ok handoff');
+
   // 3. /place для нового пользователя — предлагает /start
   const r3 = await handleUpdate(upd('/place', 888), deps);
   assert(/нет в списке/.test(r3.reply.text), 'place for unknown user');

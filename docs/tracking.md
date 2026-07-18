@@ -62,9 +62,13 @@
 3. Function — источник истины: Firestore `leads/em:<sha256>` (дедуп по адресу),
    атомарный номер из общего счётчика RTDB, аватарка, **уведомление владельцу
    в Telegram**. Подробности — [`telegram-bot.md`](telegram-bot.md).
-4. **Только после `success: true`** шлются события: `generate_lead` (GA),
-   `Lead` (Pixel, с `eventID`), `lead=yes` (Clarity). При ошибке — GA-событие
-   `lead_error` (`stage: fn_reject | fn_fail`).
+4. События `generate_lead` (GA), `Lead` (Pixel, с `eventID`), `lead=yes`
+   (Clarity) уходят **сразу при сабмите**, не дожидаясь ответа Function:
+   колбэк fetch умирал вместе с IG-вебвью (кнопка Telegram на экране успеха),
+   и Lead почти никогда не доезжал. Function дублирует `Lead` через
+   Conversions API с тем же `event_id` — Meta дедуплицирует (см.
+   [`meta-pixel.md`](meta-pixel.md)). При ошибке — GA-событие `lead_error`
+   (`stage: fn_reject | fn_fail`).
 5. UI не ждёт сеть: счётчик (локально), аватарка и экран «Ты в списке» — сразу;
    ответ сервера уточняет номер (например, при повторной заявке того же адреса).
 6. **Клиент в RTDB больше не пишет** (rules `.write: false`) — счётчик двигают
@@ -100,12 +104,19 @@
 Кнопки в модалке и на экране успеха ведут в бота `@hiyawrld_bot`
 (диплинк с first-touch меткой, см. [`telegram-bot.md`](telegram-bot.md)).
 События: `tg_click {area: modal|ok}` (GA) + тег `tg=click` (Clarity).
-Лиды из бота НЕ проходят через FormSubmit — они в Firestore `leads/tg:*`,
-но двигают тот же счётчик RTDB, что видит сайт.
+Лиды из бота живут в Firestore `leads/tg:*`, но двигают тот же счётчик RTDB,
+что видит сайт.
+
+Перед уходом в Telegram `tgGo` (при `HIYA_PIXEL_LIVE`) отправляет **handoff**:
+keepalive-POST в `/lead` с fbclid/_fbc/_fbp → Firestore `handoffs/<код hx…>`,
+код приклеивается к start-метке (`…__hx1a2b3c4d`). Бот при /start забирает
+документ, и сервер шлёт `Lead` в Meta CAPI — иначе бот-лид невидим для
+рекламного кабинета. Клик с экрана успеха (`area=ok`) второй Lead не порождает.
 
 ## Где смотреть
 
 - GA-события/воронка — кодом через `scripts/ga_report.sh` (см. `google-analytics.md`).
 - Записи и теплокарты — Clarity UI (проект hiya).
 - События пикселя — Events Manager → Наборы данных → hiya (см. `meta-pixel.md`).
-- Лиды «источник истины» — письма FormSubmit (в каждом теперь полная атрибуция).
+- Лиды «источник истины» — Firestore `leads/*` (Cloud Function; в каждом лиде
+  полная атрибуция: ft_*, fbclid/fbc/fbp, ua/ip, event_id, capi_sent_at).

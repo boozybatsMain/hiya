@@ -191,6 +191,37 @@ async function handleUpdate(update, deps) {
     if (r.isNew || !r.capi_sent_at) {
       const code = handoffFromPayload(payload) || (r.isNew ? '' : handoffFromPayload(r.start_payload));
       const h = code ? await takeHandoff(deps, code) : null;
+      if (h) {
+        const attribution = {
+          ft_source: h.ft_source || ft.ft_source || '',
+          ft_medium: h.ft_medium || '',
+          ft_campaign: h.ft_campaign || '',
+          ft_content: h.ft_content || ft.ft_content || '',
+          ft_term: h.ft_term || '',
+          ft_campaign_id: h.ft_campaign_id || '',
+          ft_adset_id: h.ft_adset_id || '',
+          ft_ad_id: h.ft_ad_id || '',
+          fbclid: h.fbclid || '',
+          fbc: h.fbc || '',
+          fbp: h.fbp || '',
+          landing: h.landing || '',
+          referrer: h.referrer || ''
+        };
+        Object.assign(ga[0].params, {
+          ft_source: attribution.ft_source,
+          ft_medium: attribution.ft_medium,
+          ft_campaign: attribution.ft_campaign,
+          ft_content: attribution.ft_content,
+          ft_term: attribution.ft_term,
+          ft_campaign_id: attribution.ft_campaign_id,
+          ft_adset_id: attribution.ft_adset_id,
+          ft_ad_id: attribution.ft_ad_id
+        });
+        try {
+          await deps.fs.collection('leads').doc('tg:' + msg.from.id)
+            .set(attribution, { merge: true });
+        } catch (e) {}
+      }
       if (h && h.area !== 'ok' && (h.fbc || h.fbclid || h.fbp)) {
         capi.push(leadEvent({
           event_id: 'tglead_' + msg.from.id,

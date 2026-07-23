@@ -73,6 +73,9 @@ function upd(text, userId) {
   state.docs['hxabc12xyz'] = {
     fbclid: 'IwAR_test_clid', fbc: 'fb.1.1700000000000.IwAR_test_clid', fbp: 'fb.1.1700000000000.111',
     ip: '1.2.3.4', ua: 'Mozilla/5.0 Test', landing: '/?utm_source=ig', created_at: 900,
+    ft_source: 'ig', ft_medium: 'paid', ft_campaign: 'leads-alm-01',
+    ft_content: 'creative-02d-hero-honest', ft_term: 'Instagram_Reels',
+    ft_campaign_id: 'cmp_1', ft_adset_id: 'set_1', ft_ad_id: 'ad_1',
   };
   const rHand = await handleUpdate(upd('/start ig__creative-02d-hero-honest__hxabc12xyz', 2001), deps);
   assert(rHand.ga[0].params.ft_source === 'ig' && rHand.ga[0].params.ft_content === 'creative-02d-hero-honest',
@@ -84,6 +87,14 @@ function upd(text, userId) {
   assert(rHand.capi[0].user_data.fbp && rHand.capi[0].user_data.client_ip_address === '1.2.3.4', 'capi fbp/ip');
   assert(rHand.capi[0].custom_data.method === 'telegram', 'capi method');
   assert(state.docs['hxabc12xyz'] && state.docs['hxabc12xyz'].consumed_at === 1000, 'handoff marked consumed, not deleted');
+  assert(rHand.ga[0].params.ft_campaign === 'leads-alm-01' &&
+    rHand.ga[0].params.ft_term === 'Instagram_Reels', 'ga enriched from handoff');
+  assert(rHand.ga[0].params.ft_campaign_id === 'cmp_1' &&
+    rHand.ga[0].params.ft_adset_id === 'set_1' &&
+    rHand.ga[0].params.ft_ad_id === 'ad_1', 'ga immutable ids from handoff');
+  assert(state.docs['tg:2001'].ft_campaign_id === 'cmp_1' &&
+    state.docs['tg:2001'].ft_adset_id === 'set_1' &&
+    state.docs['tg:2001'].ft_ad_id === 'ad_1', 'telegram lead attribution stored');
 
   // 2е. Гонка: /start раньше записи handoff-документа — capi пуст, но повторный
   // /start ДОБИРАЕТ handoff по коду из start_payload, пока нет capi_sent_at

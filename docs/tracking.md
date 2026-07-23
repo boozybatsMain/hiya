@@ -29,8 +29,11 @@
 
 ## First-touch атрибуция (UTM-персист)
 
-При первом заходе UTM-метки и `fbclid` сохраняются в localStorage `hiya_ft`:
-`{source, medium, campaign, content, term, fbclid, ref, lp, ts}`.
+При первом заходе UTM-метки, неизменяемые Meta ID и `fbclid` сохраняются в
+localStorage `hiya_ft`:
+`{source, medium, campaign, content, term, campaign_id, adset_id, ad_id, fbclid, ref, lp, ts}`.
+`campaign_id` также подхватывается из старого `utm_id`, если отдельного
+параметра ещё нет.
 
 - **Не перезаписывается** при повторных заходах (first-touch)…
 - …**кроме апгрейда**: если сохранён `(direct)`, а новый заход пришёл с
@@ -38,12 +41,16 @@
 - Доступ из кода: `window.hiyaFT()`.
 
 Куда прокидывается first-touch:
-1. **В каждое GA-событие** — параметры `ft_source`, `ft_campaign`, `ft_content`
-   (подмешивает обёртка `window.track`; зарегистрированы как custom dimensions).
-2. **В Clarity** — теги `ft_source` / `ft_campaign` / `ft_content`
+1. **В каждое GA-событие** — параметры `ft_source`, `ft_campaign`, `ft_content`,
+   `ft_term`, `ft_campaign_id`, `ft_adset_id`, `ft_ad_id` (подмешивает обёртка
+   `window.track`; видимые в стандартных отчётах параметры требуют регистрации
+   как custom dimensions).
+2. **В Clarity** — теги `ft_source` / `ft_campaign` / `ft_content` /
+   `ft_term` / `ft_campaign_id` / `ft_adset_id` / `ft_ad_id`
    (`clarity('set', …)`) — фильтруют записи сессий по кампании/креативу.
-3. **В письмо с лидом** — скрытые поля FormSubmit (см. ниже): каждый лид
-   приходит с источником, кампанией и креативом.
+3. **В Firestore-лид и Telegram handoff** — имена и ID сохраняются вместе с
+   `fbclid`/`fbc`/`fbp`. Даже если имя объявления или UTM ошибочно скопировали,
+   источник можно восстановить по неизменяемому `ad_id`.
 
 ## Обёртки (безопасные, молчат при `live=false`)
 
@@ -108,9 +115,10 @@
 что видит сайт.
 
 Перед уходом в Telegram `tgGo` (при `HIYA_PIXEL_LIVE`) отправляет **handoff**:
-keepalive-POST в `/lead` с fbclid/_fbc/_fbp → Firestore `handoffs/<код hx…>`,
-код приклеивается к start-метке (`…__hx1a2b3c4d`). Бот при /start забирает
-документ, и сервер шлёт `Lead` в Meta CAPI — иначе бот-лид невидим для
+keepalive-POST в `/lead` с first-touch именами/ID и fbclid/_fbc/_fbp →
+Firestore `handoffs/<код hx…>`, код приклеивается к start-метке
+(`…__hx1a2b3c4d`). Бот при /start переносит атрибуцию в `leads/tg:*`, обогащает
+серверное GA-событие и шлёт `Lead` в Meta CAPI — иначе бот-лид невидим для
 рекламного кабинета. Клик с экрана успеха (`area=ok`) второй Lead не порождает.
 
 ## Где смотреть

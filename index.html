@@ -128,6 +128,9 @@
         campaign: q2.get('utm_campaign') || '',
         content:  q2.get('utm_content')  || '',
         term:     q2.get('utm_term')     || '',
+        campaign_id: q2.get('campaign_id') || q2.get('utm_id') || '',
+        adset_id:    q2.get('adset_id') || '',
+        ad_id:       q2.get('ad_id') || '',
         fbclid:   fbclid || '',
         ref:      document.referrer || '',
         lp:       location.pathname + location.search,
@@ -149,6 +152,10 @@
         if (p.ft_source == null)   p.ft_source   = FT.source;
         if (p.ft_campaign == null) p.ft_campaign = FT.campaign;
         if (p.ft_content == null)  p.ft_content  = FT.content;
+        if (p.ft_term == null)        p.ft_term        = FT.term;
+        if (p.ft_campaign_id == null) p.ft_campaign_id = FT.campaign_id;
+        if (p.ft_adset_id == null)    p.ft_adset_id    = FT.adset_id;
+        if (p.ft_ad_id == null)       p.ft_ad_id       = FT.ad_id;
       }
       gtag('event', name, p);
     };
@@ -223,6 +230,10 @@
         if (FT.source)   ctag('ft_source', FT.source);
         if (FT.campaign) ctag('ft_campaign', FT.campaign);
         if (FT.content)  ctag('ft_content', FT.content);
+        if (FT.term)        ctag('ft_term', FT.term);
+        if (FT.campaign_id) ctag('ft_campaign_id', FT.campaign_id);
+        if (FT.adset_id)    ctag('ft_adset_id', FT.adset_id);
+        if (FT.ad_id)       ctag('ft_ad_id', FT.ad_id);
       }
     }
     var gsiLoaded = false;
@@ -2011,6 +2022,9 @@
       ft_campaign: ft.campaign || '',
       ft_content:  ft.content  || '',
       ft_term:     ft.term     || '',
+      ft_campaign_id: ft.campaign_id || '',
+      ft_adset_id:    ft.adset_id || '',
+      ft_ad_id:       ft.ad_id || '',
       fbclid:      ft.fbclid   || '',
       fbc:         fbCookie('_fbc'),
       fbp:         fbCookie('_fbp'),
@@ -2080,7 +2094,13 @@
           fbc: fbCookie('_fbc'),
           fbp: fbCookie('_fbp'),
           ft_source: ft.source || '',
+          ft_medium: ft.medium || '',
+          ft_campaign: ft.campaign || '',
           ft_content: ft.content || '',
+          ft_term: ft.term || '',
+          ft_campaign_id: ft.campaign_id || '',
+          ft_adset_id: ft.adset_id || '',
+          ft_ad_id: ft.ad_id || '',
           landing: ft.lp || '',
           referrer: ft.ref || ''
         }) }).catch(function () {});

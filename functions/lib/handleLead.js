@@ -11,7 +11,11 @@ const { TARGET, OWNER_CHAT_ID, initialsFromEmail, takePlace } = require('./commo
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // fbc/fbp — куки пикселя, ua/ip — серверные значения (index.js кладёт в data):
 // всё это ключи матчинга Meta CAPI, хранятся на лиде ради бэкфилла.
-const FT_FIELDS = ['method', 'ft_source', 'ft_medium', 'ft_campaign', 'ft_content', 'ft_term', 'fbclid', 'fbc', 'fbp', 'ua', 'ip', 'referrer', 'landing', 'event_id'];
+const FT_FIELDS = [
+  'method', 'ft_source', 'ft_medium', 'ft_campaign', 'ft_content', 'ft_term',
+  'ft_campaign_id', 'ft_adset_id', 'ft_ad_id',
+  'fbclid', 'fbc', 'fbp', 'ua', 'ip', 'referrer', 'landing', 'event_id'
+];
 
 function ownerNote(email, data, r, dup) {
   const src = [data.ft_source, data.ft_content].filter(Boolean).join(' / ') || '—';
